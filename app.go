@@ -22,7 +22,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
-	"github.com/cosmos/sdk-application-tutorial/x/marketplace"
+	"github.com/dgamingfoundation/marketplace/x/marketplace"
 )
 
 const appName = "marketplace"

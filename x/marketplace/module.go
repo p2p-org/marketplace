@@ -9,8 +9,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
-	"github.com/cosmos/sdk-application-tutorial/x/marketplace/client/cli"
-	"github.com/cosmos/sdk-application-tutorial/x/marketplace/client/rest"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/client/cli"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/client/rest"
 
 	"github.com/cosmos/cosmos-sdk/client/context"
 	sdk "github.com/cosmos/cosmos-sdk/types"

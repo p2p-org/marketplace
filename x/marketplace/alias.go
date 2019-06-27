@@ -1,7 +1,7 @@
 package marketplace
 
 import (
-	"github.com/cosmos/sdk-application-tutorial/x/marketplace/types"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 )
 
 const (
