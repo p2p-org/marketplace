@@ -6,91 +6,56 @@ import (
 
 const RouterKey = ModuleName // this was defined in your key.go file
 
-// MsgSetName defines a SetName message
-type MsgSetName struct {
-	Name  string         `json:"name"`
-	Value string         `json:"value"`
-	Owner sdk.AccAddress `json:"owner"`
+type MsgMintNFT struct {
+	Owner       sdk.AccAddress `json:"owner"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Image       string         `json:"image"`
+	TokenURI    string         `json:"token_uri"`
+	Price       sdk.Coin       `json:"price"`
 }
 
-// NewMsgSetName is a constructor function for MsgSetName
-func NewMsgSetName(name string, value string, owner sdk.AccAddress) MsgSetName {
-	return MsgSetName{
-		Name:  name,
-		Value: value,
-		Owner: owner,
+func NewMsgMintNFT(
+	owner sdk.AccAddress,
+	name,
+	description,
+	image,
+	tokenURI string,
+	price sdk.Coin,
+) *MsgMintNFT {
+	return &MsgMintNFT{
+		Owner:       owner,
+		Name:        name,
+		Description: description,
+		Image:       image,
+		TokenURI:    tokenURI,
+		Price:       price,
 	}
 }
 
 // Route should return the name of the module
-func (msg MsgSetName) Route() string { return RouterKey }
+func (m MsgMintNFT) Route() string { return RouterKey }
 
 // Type should return the action
-func (msg MsgSetName) Type() string { return "set_name" }
+func (m MsgMintNFT) Type() string { return "mint_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (msg MsgSetName) ValidateBasic() sdk.Error {
-	if msg.Owner.Empty() {
-		return sdk.ErrInvalidAddress(msg.Owner.String())
+func (m MsgMintNFT) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
 	}
-	if len(msg.Name) == 0 || len(msg.Value) == 0 {
-		return sdk.ErrUnknownRequest("Name and/or Value cannot be empty")
+	if len(m.Name) == 0 || len(m.Description) == 0 {
+		return sdk.ErrUnknownRequest("Name and/or Description cannot be empty")
 	}
 	return nil
 }
 
 // GetSignBytes encodes the message for signing
-func (msg MsgSetName) GetSignBytes() []byte {
-	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+func (m MsgMintNFT) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
 }
 
 // GetSigners defines whose signature is required
-func (msg MsgSetName) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{msg.Owner}
-}
-
-// MsgBuyName defines the BuyName message
-type MsgBuyName struct {
-	Name  string         `json:"name"`
-	Bid   sdk.Coins      `json:"bid"`
-	Buyer sdk.AccAddress `json:"buyer"`
-}
-
-// NewMsgBuyName is the constructor function for MsgBuyName
-func NewMsgBuyName(name string, bid sdk.Coins, buyer sdk.AccAddress) MsgBuyName {
-	return MsgBuyName{
-		Name:  name,
-		Bid:   bid,
-		Buyer: buyer,
-	}
-}
-
-// Route should return the name of the module
-func (msg MsgBuyName) Route() string { return RouterKey }
-
-// Type should return the action
-func (msg MsgBuyName) Type() string { return "buy_name" }
-
-// ValidateBasic runs stateless checks on the message
-func (msg MsgBuyName) ValidateBasic() sdk.Error {
-	if msg.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(msg.Buyer.String())
-	}
-	if len(msg.Name) == 0 {
-		return sdk.ErrUnknownRequest("Name cannot be empty")
-	}
-	if !msg.Bid.IsAllPositive() {
-		return sdk.ErrInsufficientCoins("Bids must be positive")
-	}
-	return nil
-}
-
-// GetSignBytes encodes the message for signing
-func (msg MsgBuyName) GetSignBytes() []byte {
-	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
-}
-
-// GetSigners defines whose signature is required
-func (msg MsgBuyName) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{msg.Buyer}
+func (m MsgMintNFT) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
 }

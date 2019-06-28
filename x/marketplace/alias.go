@@ -11,17 +11,15 @@ const (
 )
 
 var (
-	NewMsgBuyName = types.NewMsgBuyName
-	NewMsgSetName = types.NewMsgSetName
-	NewWhois      = types.NewWhois
+	NewMsgMintNFT = types.NewMsgMintNFT
+	NewNFT        = types.NewNFT
 	ModuleCdc     = types.ModuleCdc
 	RegisterCodec = types.RegisterCodec
 )
 
 type (
-	MsgSetName      = types.MsgSetName
-	MsgBuyName      = types.MsgBuyName
+	MsgMintNFT      = types.MsgMintNFT
 	QueryResResolve = types.QueryResResolve
 	QueryResNames   = types.QueryResNames
-	Whois           = types.Whois
+	NFT             = types.NFT
 )
