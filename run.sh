@@ -16,7 +16,7 @@ mpcli keys add validator1 --recover <<< "12345678
 base figure planet hazard sail easily honey advance tuition grab across unveil random kiss fence connect disagree evil recall latin cause brisk soft lunch
 "
 
-mpd add-genesis-account $(mpcli keys show validator1 -a) 1000token,100000000stake
+mpd add-genesis-account $(mpcli keys show validator1 -a) 1000nametoken,100000000stake
 
 echo "Configuring..."
 mpcli config chain-id mpchain

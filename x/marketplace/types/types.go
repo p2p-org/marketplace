@@ -5,28 +5,29 @@ import (
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 )
 
-// Initial Starting Price for a name that was never previously owned
-var MinNamePrice = sdk.Coins{sdk.NewInt64Coin("nametoken", 1)}
-
-// Whois is a struct that contains all the metadata of a name
-type Whois struct {
-	Value string         `json:"value"`
-	Owner sdk.AccAddress `json:"owner"`
-	Price sdk.Coins      `json:"price"`
+type MarketplaceNFT struct {
+	NFT    xnft.NFT `json:"nft"`
+	Price  sdk.Coin `json:"price"`
+	OnSale bool     `json:"on_sale"`
 }
 
-// Returns a new Whois with the minprice as the price
-func NewWhois() Whois {
-	return Whois{
-		Price: MinNamePrice,
+func NewMarketplaceNFT(nft xnft.NFT, price sdk.Coin) MarketplaceNFT {
+	return MarketplaceNFT{
+		NFT:   nft,
+		Price: price,
 	}
 }
 
-// implement fmt.Stringer
-func (w Whois) String() string {
+func (m MarketplaceNFT) String() string {
 	return strings.TrimSpace(fmt.Sprintf(`Owner: %s
-Value: %s
-Price: %s`, w.Owner, w.Value, w.Price))
+NFT: %s
+Price: %s
+On Salse: %t`, m.NFT.GetOwner(), m.NFT, m.Price, m.OnSale))
+}
+
+func (m MarketplaceNFT) SetOnSale(status bool) {
+	m.OnSale = status
 }
