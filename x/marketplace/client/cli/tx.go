@@ -22,70 +22,40 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	marketplaceTxCmd.AddCommand(client.PostCommands(
-		GetCmdBuyName(cdc),
-		GetCmdSetName(cdc),
+		GetCmdMintNFT(cdc),
 	)...)
 
 	return marketplaceTxCmd
 }
 
-// GetCmdBuyName is the CLI command for sending a BuyName transaction
-func GetCmdBuyName(cdc *codec.Codec) *cobra.Command {
+// GetCmdMintNFT is the CLI command for sending a BuyName transaction
+func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "buy-name [name] [amount]",
-		Short: "bid for existing name or claim new name",
-		Args:  cobra.ExactArgs(2),
+		Use:   "mint [name] [description] [image] [token_uri] [price]",
+		Short: "mint a new NFT",
+		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc).WithAccountDecoder(cdc)
-
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContextWithFrom(args[0]).WithCodec(cdc)
 
-			if err := cliCtx.EnsureAccountExists(); err != nil {
-				return err
-			}
-
-			coins, err := sdk.ParseCoins(args[1])
+			var (
+				owner       = cliCtx.GetFromAddress()
+				name        = args[0]
+				description = args[1]
+				image       = args[2]
+				tokenURI    = args[3]
+			)
+			price, err := sdk.ParseCoin(args[4])
 			if err != nil {
 				return err
 			}
 
-			msg := types.NewMsgBuyName(args[0], coins, cliCtx.GetFromAddress())
+			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI, price)
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err
 			}
 
-			cliCtx.PrintResponse = true
-
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
-		},
-	}
-}
-
-// GetCmdSetName is the CLI command for sending a SetName transaction
-func GetCmdSetName(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "set-name [name] [value]",
-		Short: "set the value associated with a name that you own",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc).WithAccountDecoder(cdc)
-
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-
-			if err := cliCtx.EnsureAccountExists(); err != nil {
-				return err
-			}
-
-			msg := types.NewMsgSetName(args[0], args[1], cliCtx.GetFromAddress())
-			err := msg.ValidateBasic()
-			if err != nil {
-				return err
-			}
-
-			cliCtx.PrintResponse = true
-
-			// return utils.CompleteAndBroadcastTxCLI(txBldr, cliCtx, msgs)
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}

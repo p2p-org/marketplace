@@ -12,6 +12,6 @@ func init() {
 
 // RegisterCodec registers concrete types on the Amino codec
 func RegisterCodec(cdc *codec.Codec) {
-	cdc.RegisterConcrete(MsgSetName{}, "marketplace/SetName", nil)
-	cdc.RegisterConcrete(MsgBuyName{}, "marketplace/BuyName", nil)
+	cdc.RegisterConcrete(NFT{}, "marketplace/NFT", nil)
+	cdc.RegisterConcrete(MsgMintNFT{}, "marketplace/MintNFT", nil)
 }

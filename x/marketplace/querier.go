@@ -1,29 +1,28 @@
 package marketplace
 
 import (
-	"github.com/cosmos/cosmos-sdk/codec"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	xnft "github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // query endpoints supported by the marketplace Querier
 const (
-	QueryResolve = "resolve"
-	QueryWhois   = "whois"
-	QueryNames   = "names"
+	QueryNFT  = "nft"
+	QueryNFTs = "nfts"
 )
 
 // NewQuerier is the module level router for state queries
 func NewQuerier(keeper Keeper) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) (res []byte, err sdk.Error) {
 		switch path[0] {
-		case QueryResolve:
-			return queryResolve(ctx, path[1:], req, keeper)
-		case QueryWhois:
-			return queryWhois(ctx, path[1:], req, keeper)
-		case QueryNames:
-			return queryNames(ctx, req, keeper)
+		case QueryNFT:
+			return queryNFT(ctx, path[1:], req, keeper)
+		case QueryNFTs:
+			return queryNFTs(ctx, req, keeper)
 		default:
 			return nil, sdk.ErrUnknownRequest("unknown marketplace query endpoint")
 		}
@@ -31,46 +30,27 @@ func NewQuerier(keeper Keeper) sdk.Querier {
 }
 
 // nolint: unparam
-func queryResolve(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
-	value := keeper.ResolveName(ctx, path[0])
-
-	if value == "" {
-		return []byte{}, sdk.ErrUnknownRequest("could not resolve name")
-	}
-
-	res, err := codec.MarshalJSONIndent(keeper.cdc, QueryResResolve{value})
+func queryNFT(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	id := path[0]
+	value, err := keeper.GetNFT(ctx, id)
 	if err != nil {
-		panic("could not marshal result to JSON")
+		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find NFT with id %s: %v", id, err))
 	}
 
-	return res, nil
+	bz := keeper.cdc.MustMarshalJSON(value)
+	return bz, nil
 }
 
-// nolint: unparam
-func queryWhois(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
-	whois := keeper.GetWhois(ctx, path[0])
-
-	res, err := codec.MarshalJSONIndent(keeper.cdc, whois)
-	if err != nil {
-		panic("could not marshal result to JSON")
-	}
-
-	return res, nil
-}
-
-func queryNames(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
-	var namesList QueryResNames
-
-	iterator := keeper.GetNamesIterator(ctx)
-
+func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	var (
+		nfts     xnft.NFTs
+		iterator = keeper.GetNFTsIterator(ctx)
+	)
 	for ; iterator.Valid(); iterator.Next() {
-		namesList = append(namesList, string(iterator.Key()))
+		var nft types.NFT
+		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &nft)
+		nfts = append(nfts, nft.NFT)
 	}
 
-	res, err := codec.MarshalJSONIndent(keeper.cdc, namesList)
-	if err != nil {
-		panic("could not marshal result to JSON")
-	}
-
-	return res, nil
+	return keeper.cdc.MustMarshalJSON(nfts), nil
 }

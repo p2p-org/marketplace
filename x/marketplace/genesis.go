@@ -8,49 +8,43 @@ import (
 )
 
 type GenesisState struct {
-	WhoisRecords []Whois `json:"whois_records"`
+	NFTRecords []*NFT `json:"nft_records"`
 }
 
-func NewGenesisState(whoIsRecords []Whois) GenesisState {
-	return GenesisState{WhoisRecords: nil}
+func NewGenesisState(nftRecords []*NFT) GenesisState {
+	return GenesisState{NFTRecords: nftRecords}
 }
 
 func ValidateGenesis(data GenesisState) error {
-	for _, record := range data.WhoisRecords {
-		if record.Owner == nil {
-			return fmt.Errorf("Invalid WhoisRecord: Value: %s. Error: Missing Owner", record.Value)
-		}
-		if record.Value == "" {
-			return fmt.Errorf("Invalid WhoisRecord: Owner: %s. Error: Missing Value", record.Owner)
-		}
-		if record.Price == nil {
-			return fmt.Errorf("Invalid WhoisRecord: Value: %s. Error: Missing Price", record.Value)
-		}
-	}
+	// TODO: validate genesis.
 	return nil
 }
 
 func DefaultGenesisState() GenesisState {
 	return GenesisState{
-		WhoisRecords: []Whois{},
+		NFTRecords: []*NFT{},
 	}
 }
 
 func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.ValidatorUpdate {
-	for _, record := range data.WhoisRecords {
-		keeper.SetWhois(ctx, record.Value, record)
+	for _, record := range data.NFTRecords {
+		if err := keeper.StoreNFT(ctx, record); err != nil {
+			panic(fmt.Sprintf("failed to InitGenesis: %v", err))
+		}
 	}
 	return []abci.ValidatorUpdate{}
 }
 
 func ExportGenesis(ctx sdk.Context, k Keeper) GenesisState {
-	var records []Whois
-	iterator := k.GetNamesIterator(ctx)
+	var records []*NFT
+	iterator := k.GetNFTsIterator(ctx)
 	for ; iterator.Valid(); iterator.Next() {
-		name := string(iterator.Key())
-		var whois Whois
-		whois = k.GetWhois(ctx, name)
-		records = append(records, whois)
+		id := string(iterator.Key())
+		nft, err := k.GetNFT(ctx, id)
+		if err != nil {
+			panic(fmt.Sprintf("failed to ExportGenesis: %v", err))
+		}
+		records = append(records, nft)
 	}
-	return GenesisState{WhoisRecords: records}
+	return GenesisState{NFTRecords: records}
 }

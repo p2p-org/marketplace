@@ -18,8 +18,6 @@ var (
 )
 
 type (
-	MsgMintNFT      = types.MsgMintNFT
-	QueryResResolve = types.QueryResResolve
-	QueryResNames   = types.QueryResNames
-	NFT             = types.NFT
+	MsgMintNFT = types.MsgMintNFT
+	NFT        = types.NFT
 )

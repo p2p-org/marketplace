@@ -9,12 +9,12 @@ import (
 )
 
 type NFT struct {
-	NFT    xnft.NFT `json:"nft"`
-	Price  sdk.Coin `json:"price"`
-	OnSale bool     `json:"on_sale"`
+	NFT    xnft.BaseNFT `json:"nft"`
+	Price  sdk.Coin     `json:"price"`
+	OnSale bool         `json:"on_sale"`
 }
 
-func NewNFT(nft xnft.NFT, price sdk.Coin) *NFT {
+func NewNFT(nft xnft.BaseNFT, price sdk.Coin) *NFT {
 	return &NFT{
 		NFT:   nft,
 		Price: price,

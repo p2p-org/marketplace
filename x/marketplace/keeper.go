@@ -25,16 +25,17 @@ func NewKeeper(coinKeeper bank.Keeper, storeKey sdk.StoreKey, cdc *codec.Codec) 
 	}
 }
 
-func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, bool) {
+func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
 	store := ctx.KVStore(k.storeKey)
 	if !store.Has([]byte(id)) {
-		return nil, false
+		return nil, fmt.Errorf("could not find NFT with id %s", id)
 	}
 
 	bz := store.Get([]byte(id))
 	var nft NFT
-	k.cdc.MustUnmarshalBinaryBare(bz, &nft)
-	return &nft, true
+	k.cdc.MustUnmarshalJSON(bz, &nft)
+
+	return &nft, nil
 }
 
 func (k Keeper) StoreNFT(ctx sdk.Context, nft *NFT) error {
@@ -44,7 +45,8 @@ func (k Keeper) StoreNFT(ctx sdk.Context, nft *NFT) error {
 		return fmt.Errorf("nft with ID %s already exists", id)
 	}
 
-	store.Set([]byte(id), k.cdc.MustMarshalBinaryBare(nft))
+	bz := k.cdc.MustMarshalJSON(nft)
+	store.Set([]byte(id), bz)
 	return nil
 }
 
