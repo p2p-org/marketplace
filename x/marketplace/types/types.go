@@ -28,8 +28,16 @@ Price: %s
 On Salse: %t`, m.GetOwner(), m.BaseNFT, m.Price, m.OnSale))
 }
 
+func (m *NFT) GetPrice() sdk.Coin {
+	return m.Price
+}
+
 func (m *NFT) SetPrice(price sdk.Coin) {
 	m.Price = price
+}
+
+func (m *NFT) IsOnSale() bool {
+	return m.OnSale
 }
 
 func (m *NFT) SetOnSale(status bool) {

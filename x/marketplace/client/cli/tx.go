@@ -25,6 +25,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdMintNFT(cdc),
 		GetCmdTransferNFT(cdc),
 		GetCmdSellNFT(cdc),
+		GetCmdBuyNFT(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -100,6 +101,25 @@ func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 			}
 
 			msg := types.NewMsgSellNFT(cliCtx.GetFromAddress(), args[0], price)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "buy [token_id]",
+		Short: "buy an NFT",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			msg := types.NewMsgBuyNFT(cliCtx.GetFromAddress(), args[0])
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}

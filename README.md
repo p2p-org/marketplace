@@ -25,7 +25,7 @@ mpcli tx marketplace transfer 20cec63d-bc88-44da-94c8-b67044ff7ab2 cosmos16y2vaa
 To sell a token (to make it purchasable by anybody who offers the exact price you specified):
 
 ```bash
-mpcli tx marketplace sell 20cec63d-bc88-44da-94c8-b67044ff7ab2 --from user1
+mpcli tx marketplace sell 20cec63d-bc88-44da-94c8-b67044ff7ab2 10token --from user1
 ```
 
 

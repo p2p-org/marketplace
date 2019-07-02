@@ -20,5 +20,6 @@ type (
 	MsgMintNFT     = types.MsgMintNFT
 	MsgTransferNFT = types.MsgTransferNFT
 	MsgSellNFT     = types.MsgSellNFT
+	MsgBuyNFT      = types.MsgBuyNFT
 	NFT            = types.NFT
 )

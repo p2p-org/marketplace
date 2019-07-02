@@ -178,8 +178,6 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 			app.slashingKeeper.Hooks()),
 	)
 
-	// The MarketplaceKeeper is the Keeper from the module for this tutorial
-	// It handles interactions with the namestore
 	app.nsKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
 		app.keyNS,

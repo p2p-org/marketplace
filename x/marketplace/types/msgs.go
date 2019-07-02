@@ -87,7 +87,7 @@ func NewMsgTransferNFT(tokenID string, sender, recipient sdk.AccAddress) *MsgTra
 func (m MsgTransferNFT) Route() string { return RouterKey }
 
 // Type should return the action
-func (m MsgTransferNFT) Type() string { return "transfer_nfr" }
+func (m MsgTransferNFT) Type() string { return "transfer_nft" }
 
 // ValidateBasic runs stateless checks on the message
 func (m MsgTransferNFT) ValidateBasic() sdk.Error {
@@ -158,4 +158,49 @@ func (m MsgSellNFT) GetSignBytes() []byte {
 // GetSigners defines whose signature is required
 func (m MsgSellNFT) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBuyNFT
+//
+// --------------------------------------------------------------------------
+
+type MsgBuyNFT struct {
+	Buyer   sdk.AccAddress `json:"buyer"`
+	TokenID string         `json:"token_id"`
+}
+
+func NewMsgBuyNFT(owner sdk.AccAddress, tokenID string) *MsgBuyNFT {
+	return &MsgBuyNFT{
+		Buyer:   owner,
+		TokenID: tokenID,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBuyNFT) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBuyNFT) Type() string { return "buy_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBuyNFT) ValidateBasic() sdk.Error {
+	if m.Buyer.Empty() {
+		return sdk.ErrInvalidAddress(m.Buyer.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBuyNFT) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBuyNFT) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Buyer}
 }
