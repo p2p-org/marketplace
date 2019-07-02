@@ -24,6 +24,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	marketplaceTxCmd.AddCommand(client.PostCommands(
 		GetCmdMintNFT(cdc),
 		GetCmdTransferNFT(cdc),
+		GetCmdSellNFT(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -33,7 +34,7 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
 		Use:   "mint [name] [description] [image] [token_uri] [price]",
 		Short: "mint a new NFT",
-		Args:  cobra.ExactArgs(5),
+		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -45,13 +46,13 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 				image       = args[2]
 				tokenURI    = args[3]
 			)
-			price, err := sdk.ParseCoin(args[4])
-			if err != nil {
-				return err
-			}
+			//price, err := sdk.ParseCoin(args[4])
+			//if err != nil {
+			//	return err
+			//}
 
-			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI, price)
-			if err = msg.ValidateBasic(); err != nil {
+			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI)
+			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
 
@@ -76,6 +77,30 @@ func GetCmdTransferNFT(cdc *codec.Codec) *cobra.Command {
 
 			msg := types.NewMsgTransferNFT(args[0], cliCtx.GetFromAddress(), recipient)
 			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "sell [token_id] [price]",
+		Short: "sell an NFT (token can be bought for the specified price)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			price, err := sdk.ParseCoin(args[1])
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgSellNFT(cliCtx.GetFromAddress(), args[0], price)
+			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
 

@@ -28,6 +28,10 @@ Price: %s
 On Salse: %t`, m.GetOwner(), m.BaseNFT, m.Price, m.OnSale))
 }
 
-func (m NFT) SetOnSale(status bool) {
+func (m *NFT) SetPrice(price sdk.Coin) {
+	m.Price = price
+}
+
+func (m *NFT) SetOnSale(status bool) {
 	m.OnSale = status
 }

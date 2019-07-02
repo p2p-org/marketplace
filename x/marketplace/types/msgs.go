@@ -18,7 +18,6 @@ type MsgMintNFT struct {
 	Description string         `json:"description"`
 	Image       string         `json:"image"`
 	TokenURI    string         `json:"token_uri"`
-	Price       sdk.Coin       `json:"price"`
 }
 
 func NewMsgMintNFT(
@@ -27,7 +26,6 @@ func NewMsgMintNFT(
 	description,
 	image,
 	tokenURI string,
-	price sdk.Coin,
 ) *MsgMintNFT {
 	return &MsgMintNFT{
 		Owner:       owner,
@@ -35,7 +33,6 @@ func NewMsgMintNFT(
 		Description: description,
 		Image:       image,
 		TokenURI:    tokenURI,
-		Price:       price,
 	}
 }
 
@@ -114,4 +111,51 @@ func (m MsgTransferNFT) GetSignBytes() []byte {
 // GetSigners defines whose signature is required
 func (m MsgTransferNFT) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Sender}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgSellNFT
+//
+// --------------------------------------------------------------------------
+
+type MsgSellNFT struct {
+	Owner   sdk.AccAddress `json:"owner"`
+	TokenID string         `json:"token_id"`
+	Price   sdk.Coin       `json:"price"`
+}
+
+func NewMsgSellNFT(owner sdk.AccAddress, tokenID string, price sdk.Coin) *MsgSellNFT {
+	return &MsgSellNFT{
+		Owner:   owner,
+		TokenID: tokenID,
+		Price:   price,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgSellNFT) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgSellNFT) Type() string { return "sell_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgSellNFT) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgSellNFT) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgSellNFT) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
 }

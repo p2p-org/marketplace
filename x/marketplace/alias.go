@@ -19,5 +19,6 @@ var (
 type (
 	MsgMintNFT     = types.MsgMintNFT
 	MsgTransferNFT = types.MsgTransferNFT
+	MsgSellNFT     = types.MsgSellNFT
 	NFT            = types.NFT
 )

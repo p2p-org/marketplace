@@ -70,6 +70,21 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	return k.UpdateNFT(ctx, nft)
 }
 
+func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price sdk.Coin) error {
+	nft, err := k.GetNFT(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to GetNFT: %v", err)
+	}
+
+	if !nft.GetOwner().Equals(owner) {
+		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
+	}
+	nft.SetPrice(price)
+	nft.SetOnSale(true)
+
+	return k.UpdateNFT(ctx, nft)
+}
+
 func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 	store := ctx.KVStore(k.storeKey)
 	if !store.Has([]byte(newToken.GetID())) {

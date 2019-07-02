@@ -32,11 +32,10 @@ type MintReq struct {
 	BaseReq rest.BaseReq `json:"base_req"`
 	Owner   string       `json:"owner"`
 
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Image       string   `json:"image"`
-	TokenURI    string   `json:"token_uri"`
-	Price       sdk.Coin `json:"price"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Image       string `json:"image"`
+	TokenURI    string `json:"token_uri"`
 }
 
 func mintHandler(cliCtx context.CLIContext) http.HandlerFunc {
@@ -59,7 +58,7 @@ func mintHandler(cliCtx context.CLIContext) http.HandlerFunc {
 		}
 
 		// create the message
-		msg := types.NewMsgMintNFT(owner, req.Name, req.Description, req.Image, req.TokenURI, req.Price)
+		msg := types.NewMsgMintNFT(owner, req.Name, req.Description, req.Image, req.TokenURI)
 		err = msg.ValidateBasic()
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
