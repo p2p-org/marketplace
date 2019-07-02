@@ -11,13 +11,13 @@ const (
 )
 
 var (
-	NewMsgMintNFT = types.NewMsgMintNFT
 	NewNFT        = types.NewNFT
 	ModuleCdc     = types.ModuleCdc
 	RegisterCodec = types.RegisterCodec
 )
 
 type (
-	MsgMintNFT = types.MsgMintNFT
-	NFT        = types.NFT
+	MsgMintNFT     = types.MsgMintNFT
+	MsgTransferNFT = types.MsgTransferNFT
+	NFT            = types.NFT
 )

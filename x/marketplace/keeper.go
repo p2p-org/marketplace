@@ -38,7 +38,7 @@ func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
 	return &nft, nil
 }
 
-func (k Keeper) StoreNFT(ctx sdk.Context, nft *NFT) error {
+func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
 	id := nft.NFT.GetID()
 	store := ctx.KVStore(k.storeKey)
 	if store.Has([]byte(id)) {

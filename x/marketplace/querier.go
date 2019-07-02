@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -43,13 +42,13 @@ func queryNFT(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keep
 
 func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
 	var (
-		nfts     xnft.NFTs
+		nfts     types.QueryResNFTs
 		iterator = keeper.GetNFTsIterator(ctx)
 	)
 	for ; iterator.Valid(); iterator.Next() {
 		var nft types.NFT
 		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &nft)
-		nfts = append(nfts, nft.NFT)
+		nfts.NFTs = append(nfts.NFTs, &nft)
 	}
 
 	return keeper.cdc.MustMarshalJSON(nfts), nil

@@ -28,7 +28,7 @@ func DefaultGenesisState() GenesisState {
 
 func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.ValidatorUpdate {
 	for _, record := range data.NFTRecords {
-		if err := keeper.StoreNFT(ctx, record); err != nil {
+		if err := keeper.MintNFT(ctx, record); err != nil {
 			panic(fmt.Sprintf("failed to InitGenesis: %v", err))
 		}
 	}

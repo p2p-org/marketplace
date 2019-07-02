@@ -2,16 +2,15 @@ package types
 
 import "strings"
 
-type QueryResExample struct {
-	Value string `json:"value"`
+type QueryResNFTs struct {
+	NFTs []*NFT `json:"nfts"`
 }
 
-func (r QueryResExample) String() string {
-	return r.Value
-}
+func (r QueryResNFTs) String() string {
+	var out []string
+	for _, nft := range r.NFTs {
+		out = append(out, nft.String())
+	}
 
-type QueryResNames []string
-
-func (n QueryResNames) String() string {
-	return strings.Join(n[:], "\n")
+	return strings.Join(out, "\n")
 }

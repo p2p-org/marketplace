@@ -6,7 +6,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +62,7 @@ func GetCmdNFTs(queryRoute string, cdc *codec.Codec) *cobra.Command {
 				return nil
 			}
 
-			var out xnft.NFTs
+			var out types.QueryResNFTs
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
 		},
