@@ -73,16 +73,16 @@ func (m MsgMintNFT) GetSigners() []sdk.AccAddress {
 // --------------------------------------------------------------------------
 
 type MsgTransferNFT struct {
+	TokenID   string         `json:"token_id"`
 	Sender    sdk.AccAddress `json:"sender"`
 	Recipient sdk.AccAddress `json:"recipient"`
-	TokenID   string         `json:"token_id"`
 }
 
-func NewMsgTransferNFT(sender, recipient sdk.AccAddress, tokenID string) *MsgTransferNFT {
+func NewMsgTransferNFT(tokenID string, sender, recipient sdk.AccAddress) *MsgTransferNFT {
 	return &MsgTransferNFT{
+		TokenID:   tokenID,
 		Sender:    sender,
 		Recipient: recipient,
-		TokenID:   tokenID,
 	}
 }
 

@@ -39,7 +39,7 @@ func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
 }
 
 func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
-	id := nft.NFT.GetID()
+	id := nft.GetID()
 	store := ctx.KVStore(k.storeKey)
 	if store.Has([]byte(id)) {
 		return fmt.Errorf("nft with ID %s already exists", id)
@@ -54,4 +54,29 @@ func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
 func (k Keeper) GetNFTsIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.storeKey)
 	return sdk.KVStorePrefixIterator(store, nil)
+}
+
+func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.AccAddress) error {
+	nft, err := k.GetNFT(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to GetNFT: %v", err)
+	}
+
+	if !nft.GetOwner().Equals(sender) {
+		return fmt.Errorf("%s is not the owner of NFT #%s", sender.String(), id)
+	}
+	nft.SetOwner(recipient)
+
+	return k.UpdateNFT(ctx, nft)
+}
+
+func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
+	store := ctx.KVStore(k.storeKey)
+	if !store.Has([]byte(newToken.GetID())) {
+		return fmt.Errorf("could not find NFT with id %s", newToken.GetID())
+	}
+
+	bz := k.cdc.MustMarshalJSON(newToken)
+	store.Set([]byte(newToken.GetID()), bz)
+	return nil
 }

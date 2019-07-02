@@ -14,4 +14,5 @@ func init() {
 func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(NFT{}, "marketplace/NFT", nil)
 	cdc.RegisterConcrete(MsgMintNFT{}, "marketplace/MintNFT", nil)
+	cdc.RegisterConcrete(MsgTransferNFT{}, "marketplace/TransferNFT", nil)
 }

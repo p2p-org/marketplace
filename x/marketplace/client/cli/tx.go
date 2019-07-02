@@ -23,12 +23,12 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 
 	marketplaceTxCmd.AddCommand(client.PostCommands(
 		GetCmdMintNFT(cdc),
+		GetCmdTransferNFT(cdc),
 	)...)
 
 	return marketplaceTxCmd
 }
 
-// GetCmdMintNFT is the CLI command for sending a BuyName transaction
 func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
 		Use:   "mint [name] [description] [image] [token_uri] [price]",
@@ -51,8 +51,31 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 			}
 
 			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI, price)
-			err = msg.ValidateBasic()
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func GetCmdTransferNFT(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "transfer [token_id] [recipient]",
+		Short: "transfer an NFT from one account to another",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			recipient, err := sdk.AccAddressFromBech32(args[1])
 			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgTransferNFT(args[0], cliCtx.GetFromAddress(), recipient)
+			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
 

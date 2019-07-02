@@ -16,9 +16,9 @@ mpcli tx marketplace mint name description image token_uri 10token --from user1
 
 Price must be specified; the token is **not** put on the market when minted.
 
-To transfer a token from one user to another:
+To transfer a token from user1 to user2:
 
 ```bash
-mpcli tx marketplace transfer user2 --from user1
+mpcli tx marketplace transfer 20cec63d-bc88-44da-94c8-b67044ff7ab2 cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user1
 ```
 
