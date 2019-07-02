@@ -13,7 +13,7 @@ echo "Adding keys..."
 
 echo "Adding genesis account..."
 mpcli keys add user1 --recover <<< "12345678
-base figure planet hazard sail easily honey advance tuition grab across unveil random kiss fence connect disagree evil recall latin cause brisk soft lunch
+define hurry shoot window find now soul fly live cruel elevator harvest cradle great charge such box post brass midnight glimpse forest jaguar ankle
 "
 
 mpcli keys add user2 --recover <<< "12345678
