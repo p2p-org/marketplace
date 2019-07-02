@@ -95,11 +95,14 @@ func handleMsgBuyNFT(ctx sdk.Context, keeper Keeper, msg MsgBuyNFT) sdk.Result {
 		return sdk.ErrInsufficientCoins("Buyer does not have enough coins").Result()
 	}
 
-	if err := keeper.TransferNFT(ctx, msg.TokenID, nft.GetOwner(), msg.Buyer); err != nil {
+	nft.SetOwner(msg.Buyer)
+	nft.SetOnSale(false)
+
+	if err := keeper.UpdateNFT(ctx, nft); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
 			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to TransferNFT: %v", err)),
+			Data:      []byte(fmt.Sprintf("failed to BuyNFT: %v", err)),
 		}
 	}
 
