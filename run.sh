@@ -30,7 +30,7 @@ mpcli config indent true
 mpcli config trust-node true
 
 mpd gentx --name user1 <<< "12345678"
-mpd gentx --name user2 <<< "12345678"
+mpd gentx --name user2 <<< "123456789" --output-document ~/.mpd/config/gentx/validator2.json
 mpd collect-gentxs
 mpd validate-genesis
 
