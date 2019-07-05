@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ValidatorsCommission = 0.015
+	ValidatorsCommission = 0.01
 )
 
 // NewHandler returns a handler for "marketplace" type messages.
@@ -114,7 +114,6 @@ func handleMsgBuyNFT(ctx sdk.Context, keeper Keeper, msg MsgBuyNFT) sdk.Result {
 	return sdk.Result{}
 }
 
-// This is a SKETCH. I repeat, a SKETCH.
 func doCommissions(ctx sdk.Context, keeper Keeper, payer sdk.AccAddress, price sdk.Coin) error {
 	votes := ctx.VoteInfos()
 	var vals []abci_types.Validator
