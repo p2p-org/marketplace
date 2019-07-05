@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	ValidatorsCommission = 0.01
+	ValidatorsCommission    = 0.01
+	BeneficiariesCommission = 0.015
 )
 
 // NewHandler returns a handler for "marketplace" type messages.
@@ -114,23 +115,35 @@ func handleMsgBuyNFT(ctx sdk.Context, keeper Keeper, msg MsgBuyNFT) sdk.Result {
 	return sdk.Result{}
 }
 
-func doCommissions(ctx sdk.Context, keeper Keeper, payer sdk.AccAddress, price sdk.Coin) error {
+func doCommissions(ctx sdk.Context, keeper Keeper, payer, beneficiary sdk.AccAddress, price sdk.Coin) error {
+	// Check that payer has enough funds (for both the commission and the asset itself).
+	priceFloat64 := float64(price.Amount.Int64())
+	totalValRewardAmount := sdk.NewCoin(
+		price.Denom,
+		sdk.NewInt(int64(priceFloat64*(ValidatorsCommission+BeneficiariesCommission))),
+	).Add(price)
+	if !keeper.coinKeeper.HasCoins(ctx, payer, sdk.NewCoins(totalValRewardAmount)) {
+		return fmt.Errorf("user %s does not have enough funds", payer.String())
+	}
+
+	// Pay commission to the beneficiary.
+	beneficiaryRewardAmount := sdk.NewCoin(
+		price.Denom,
+		sdk.NewInt(int64(priceFloat64*BeneficiariesCommission)),
+	)
+
+	if err := keeper.coinKeeper.SendCoins(ctx, payer, beneficiary, sdk.NewCoins(beneficiaryRewardAmount)); err != nil {
+		// TODO: rollback payments.
+		fmt.Println("Rollback")
+		return fmt.Errorf("failed to pay commission: %v", err)
+	}
+
 	votes := ctx.VoteInfos()
 	var vals []abci_types.Validator
 	for _, vote := range votes {
 		if vote.SignedLastBlock {
 			vals = append(vals, vote.Validator)
 		}
-	}
-
-	priceFloat64 := float64(price.Amount.Int64())
-	totalValRewardAmount := sdk.NewCoin(
-		price.Denom,
-		sdk.NewInt(int64(priceFloat64*ValidatorsCommission)),
-	)
-
-	if !keeper.coinKeeper.HasCoins(ctx, payer, sdk.NewCoins(totalValRewardAmount)) {
-		return fmt.Errorf("user %s does not have enough funds", payer.String())
 	}
 
 	singleValRewardAmount := sdk.NewCoin(
@@ -141,7 +154,7 @@ func doCommissions(ctx sdk.Context, keeper Keeper, payer sdk.AccAddress, price s
 	for idx, val := range vals {
 		if err := keeper.coinKeeper.SendCoins(ctx, payer, val.Address, sdk.NewCoins(singleValRewardAmount)); err != nil {
 			// TODO: rollback payments.
-			fmt.Println("Rollback after: ", idx)
+			fmt.Println("Rollback after validator: ", idx)
 			return fmt.Errorf("failed to pay commission: %v", err)
 		}
 	}

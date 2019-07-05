@@ -120,16 +120,19 @@ func (m MsgTransferNFT) GetSigners() []sdk.AccAddress {
 // --------------------------------------------------------------------------
 
 type MsgSellNFT struct {
-	Owner   sdk.AccAddress `json:"owner"`
-	TokenID string         `json:"token_id"`
-	Price   sdk.Coin       `json:"price"`
+	Owner sdk.AccAddress `json:"owner"`
+	// Beneficiary is the cosmos user who gets the commission for this transaction.
+	Beneficiary sdk.AccAddress `json:"beneficiary"`
+	TokenID     string         `json:"token_id"`
+	Price       sdk.Coin       `json:"price"`
 }
 
-func NewMsgSellNFT(owner sdk.AccAddress, tokenID string, price sdk.Coin) *MsgSellNFT {
+func NewMsgSellNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.Coin) *MsgSellNFT {
 	return &MsgSellNFT{
-		Owner:   owner,
-		TokenID: tokenID,
-		Price:   price,
+		Owner:       owner,
+		TokenID:     tokenID,
+		Price:       price,
+		Beneficiary: beneficiary,
 	}
 }
 
@@ -167,14 +170,17 @@ func (m MsgSellNFT) GetSigners() []sdk.AccAddress {
 // --------------------------------------------------------------------------
 
 type MsgBuyNFT struct {
-	Buyer   sdk.AccAddress `json:"buyer"`
-	TokenID string         `json:"token_id"`
+	Buyer sdk.AccAddress `json:"buyer"`
+	// Beneficiary is the cosmos user who gets the commission for this transaction.
+	Beneficiary sdk.AccAddress `json:"beneficiary"`
+	TokenID     string         `json:"token_id"`
 }
 
-func NewMsgBuyNFT(owner sdk.AccAddress, tokenID string) *MsgBuyNFT {
+func NewMsgBuyNFT(owner, beneficiary sdk.AccAddress, tokenID string) *MsgBuyNFT {
 	return &MsgBuyNFT{
-		Buyer:   owner,
-		TokenID: tokenID,
+		Buyer:       owner,
+		Beneficiary: beneficiary,
+		TokenID:     tokenID,
 	}
 }
 

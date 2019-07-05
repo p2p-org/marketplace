@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -47,10 +49,6 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 				image       = args[2]
 				tokenURI    = args[3]
 			)
-			//price, err := sdk.ParseCoin(args[4])
-			//if err != nil {
-			//	return err
-			//}
 
 			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI)
 			if err := msg.ValidateBasic(); err != nil {
@@ -88,9 +86,9 @@ func GetCmdTransferNFT(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "sell [token_id] [price]",
+		Use:   "sell [token_id] [price] [beneficiary]",
 		Short: "sell an NFT (token can be bought for the specified price)",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -100,7 +98,12 @@ func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			msg := types.NewMsgSellNFT(cliCtx.GetFromAddress(), args[0], price)
+			beneficiary, err := sdk.AccAddressFromBech32(args[2])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			msg := types.NewMsgSellNFT(cliCtx.GetFromAddress(), beneficiary, args[0], price)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -112,14 +115,19 @@ func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "buy [token_id]",
+		Use:   "buy [token_id] [beneficiary]",
 		Short: "buy an NFT",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
-			msg := types.NewMsgBuyNFT(cliCtx.GetFromAddress(), args[0])
+			beneficiary, err := sdk.AccAddressFromBech32(args[2])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			msg := types.NewMsgBuyNFT(cliCtx.GetFromAddress(), beneficiary, args[0])
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
