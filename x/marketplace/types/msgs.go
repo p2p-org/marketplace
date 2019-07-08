@@ -124,10 +124,10 @@ type MsgSellNFT struct {
 	// Beneficiary is the cosmos user who gets the commission for this transaction.
 	Beneficiary sdk.AccAddress `json:"beneficiary"`
 	TokenID     string         `json:"token_id"`
-	Price       sdk.Coin       `json:"price"`
+	Price       sdk.Coins      `json:"price"`
 }
 
-func NewMsgSellNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.Coin) *MsgSellNFT {
+func NewMsgSellNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.Coins) *MsgSellNFT {
 	return &MsgSellNFT{
 		Owner:       owner,
 		TokenID:     tokenID,

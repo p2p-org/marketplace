@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/x/bank"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank"
 )
 
 // Keeper maintains the link to data storage and exposes getter/setter methods for the various parts of the state machine
@@ -70,7 +69,7 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	return k.UpdateNFT(ctx, nft)
 }
 
-func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price sdk.Coin) error {
+func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price sdk.Coins) error {
 	nft, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)

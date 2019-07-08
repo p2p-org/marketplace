@@ -93,7 +93,7 @@ func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
-			price, err := sdk.ParseCoin(args[1])
+			price, err := sdk.ParseCoins(args[1])
 			if err != nil {
 				return err
 			}

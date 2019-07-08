@@ -6,6 +6,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.0.0-20190625145210-5fb86c661ea1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.0
+	github.com/magiconair/properties v1.8.0
 	github.com/mattn/go-isatty v0.0.7 // indirect
 	github.com/prometheus/procfs v0.0.0-20190328153300-af7bedc223fb // indirect
 	github.com/spf13/afero v1.2.2 // indirect
