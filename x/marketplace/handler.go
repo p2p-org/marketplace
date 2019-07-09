@@ -170,6 +170,7 @@ func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress,
 	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
 		"num_validators", len(vals))
 	for valIdx, val := range vals {
+		fmt.Println(">>>", sdk.AccAddress(val.Address).String())
 		if err := k.coinKeeper.SendCoins(ctx, payer, val.Address, singleValCommission); err != nil {
 			fmt.Printf("Failed to pay commission to validator %s, rolling back transactions", val.Address)
 
@@ -182,8 +183,6 @@ func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress,
 			return fmt.Errorf("failed to pay commission to validator %s: %v", val.Address, err)
 		}
 	}
-
-	fmt.Println(">>>>>>>>>", "OK")
 
 	return nil
 }

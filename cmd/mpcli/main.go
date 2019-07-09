@@ -20,7 +20,7 @@ import (
 
 const (
 	storeAcc = "acc"
-	storeNS  = "marketplace"
+	storeMP  = "marketplace"
 )
 
 func main() {

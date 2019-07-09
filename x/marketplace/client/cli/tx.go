@@ -49,7 +49,6 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 				image       = args[2]
 				tokenURI    = args[3]
 			)
-
 			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
@@ -122,7 +121,7 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
-			beneficiary, err := sdk.AccAddressFromBech32(args[2])
+			beneficiary, err := sdk.AccAddressFromBech32(args[1])
 			if err != nil {
 				return fmt.Errorf("failed to parse beneficiary address: %v", err)
 			}
