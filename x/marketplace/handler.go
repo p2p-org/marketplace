@@ -142,14 +142,18 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 }
 
 func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress, price sdk.Coins) error {
+	logger := ctx.Logger()
+
 	// Check that payer has enough funds (for both the commission and the asset itself).
 	totalCommission := getCommission(price, ValidatorsCommission+BeneficiariesCommission)
+	logger.Info("calculated total commission", "total_commission", totalCommission.String())
 	if !k.coinKeeper.HasCoins(ctx, payer, totalCommission) {
 		return fmt.Errorf("user %s does not have enough funds", payer.String())
 	}
 
 	// Pay commission to the beneficiary.
 	beneficiaryCommission := getCommission(price, BeneficiariesCommission)
+	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
 	if err := k.coinKeeper.SendCoins(ctx, payer, beneficiary, beneficiaryCommission); err != nil {
 		return fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
@@ -162,13 +166,15 @@ func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress,
 		}
 	}
 
-	singleValRewardAmount := getCommission(price, BeneficiariesCommission/float64(len(vals)))
+	singleValCommission := getCommission(price, BeneficiariesCommission/float64(len(vals)))
+	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
+		"num_validators", len(vals))
 	for valIdx, val := range vals {
-		if err := k.coinKeeper.SendCoins(ctx, payer, val.Address, singleValRewardAmount); err != nil {
+		if err := k.coinKeeper.SendCoins(ctx, payer, val.Address, singleValCommission); err != nil {
 			fmt.Printf("Failed to pay commission to validator %s, rolling back transactions", val.Address)
 
 			for rollbackIdx := 0; rollbackIdx < valIdx; rollbackIdx++ {
-				if err := k.coinKeeper.SendCoins(ctx, val.Address, payer, singleValRewardAmount); err != nil {
+				if err := k.coinKeeper.SendCoins(ctx, val.Address, payer, singleValCommission); err != nil {
 					panic(fmt.Sprintf("failed to rollback commission to validator %s: %v", val.Address, err))
 				}
 			}
@@ -176,6 +182,8 @@ func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress,
 			return fmt.Errorf("failed to pay commission to validator %s: %v", val.Address, err)
 		}
 	}
+
+	fmt.Println(">>>>>>>>>", "OK")
 
 	return nil
 }

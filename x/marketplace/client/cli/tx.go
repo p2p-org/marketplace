@@ -35,7 +35,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "mint [name] [description] [image] [token_uri] [price]",
+		Use:   "mint [name] [description] [image] [token_uri]",
 		Short: "mint a new NFT",
 		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
