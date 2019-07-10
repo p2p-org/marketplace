@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	// TODO: make commissions configurable.
 	ValidatorsCommission    = 0.01
 	BeneficiariesCommission = 0.015
 )
@@ -69,30 +70,14 @@ func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) sdk.Res
 }
 
 func handleMsgSellNFT(ctx sdk.Context, k Keeper, msg MsgSellNFT) sdk.Result {
-	nft, err := k.GetNFT(ctx, msg.TokenID)
-	if err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: %v", err)),
-		}
-	}
-
-	if err := doCommissions(ctx, k, msg.Owner, msg.Beneficiary, nft.Price); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: failed to pay commissions: %v", err)),
-		}
-	}
-
-	if err := k.SellNFT(ctx, msg.TokenID, msg.Owner, msg.Price); err != nil {
+	if err := k.SellNFT(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
 			Codespace: "marketplace",
 			Data:      []byte(fmt.Sprintf("failed to SellNFT: %v", err)),
 		}
 	}
+
 	return sdk.Result{}
 }
 
@@ -114,7 +99,8 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	if err := doCommissions(ctx, k, msg.Buyer, msg.Beneficiary, nft.Price); err != nil {
+	priceAfterCommission, err := doCommissions(ctx, k, msg.Buyer, msg.Beneficiary, nft.SellerBeneficiary, nft.GetPrice())
+	if err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
 			Codespace: "marketplace",
@@ -122,7 +108,7 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	err = k.coinKeeper.SendCoins(ctx, msg.Buyer, nft.GetOwner(), nft.GetPrice())
+	err = k.coinKeeper.SendCoins(ctx, msg.Buyer, nft.GetOwner(), priceAfterCommission)
 	if err != nil {
 		return sdk.ErrInsufficientCoins("Buyer does not have enough coins").Result()
 	}
@@ -141,22 +127,36 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 	return sdk.Result{}
 }
 
-func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress, price sdk.Coins) error {
+func doCommissions(
+	ctx sdk.Context,
+	k Keeper,
+	payer,
+	sellerBeneficiary,
+	buyerBeneficiary sdk.AccAddress,
+	price sdk.Coins,
+) (priceAfterCommission sdk.Coins, err error) {
 	logger := ctx.Logger()
 
 	// Check that payer has enough funds (for both the commission and the asset itself).
 	totalCommission := getCommission(price, ValidatorsCommission+BeneficiariesCommission)
 	logger.Info("calculated total commission", "total_commission", totalCommission.String())
+
+	priceAfterCommission = price.Sub(totalCommission)
 	if !k.coinKeeper.HasCoins(ctx, payer, totalCommission) {
-		return fmt.Errorf("user %s does not have enough funds", payer.String())
+		return nil, fmt.Errorf("user %s does not have enough funds", payer.String())
 	}
 
-	// Pay commission to the beneficiary.
-	beneficiaryCommission := getCommission(price, BeneficiariesCommission)
+	// Pay commission to the beneficiaries.
+	beneficiaryCommission := getCommission(price, BeneficiariesCommission/2)
 	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
-	if err := k.coinKeeper.SendCoins(ctx, payer, beneficiary, beneficiaryCommission); err != nil {
-		return fmt.Errorf("failed to pay commission to beneficiary: %v", err)
+	if err := k.coinKeeper.SendCoins(ctx, payer, sellerBeneficiary, beneficiaryCommission); err != nil {
+		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
+	logger.Info("payed seller beneficiary commission", "seller_beneficiary", sellerBeneficiary.String())
+	if err := k.coinKeeper.SendCoins(ctx, payer, buyerBeneficiary, beneficiaryCommission); err != nil {
+		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
+	}
+	logger.Info("payed buyer beneficiary commission", "buyer_beneficiary", buyerBeneficiary.String())
 
 	votes := ctx.VoteInfos()
 	var vals []abci_types.Validator
@@ -166,29 +166,21 @@ func doCommissions(ctx sdk.Context, k Keeper, payer, beneficiary sdk.AccAddress,
 		}
 	}
 
+	// First we take tokens from the payer, then we allocate tokens to validators via distribution module.
+	totalValsCommission := getCommission(price, BeneficiariesCommission)
+	if _, err := k.coinKeeper.SubtractCoins(ctx, payer, totalValsCommission); err != nil {
+		return nil, fmt.Errorf("failed to take validators commission from payer: %v", err)
+	}
+	logger.Info("wrote off validators commission")
 	singleValCommission := getCommission(price, BeneficiariesCommission/float64(len(vals)))
 	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
 		"num_validators", len(vals))
-	for valIdx, val := range vals {
+	for _, val := range vals {
 		consVal := k.stakingKeeper.ValidatorByConsAddr(ctx, sdk.ConsAddress(val.Address))
-		if err := k.coinKeeper.SendCoins(
-			ctx,
-			payer,
-			sdk.AccAddress(consVal.GetOperator().Bytes()),
-			singleValCommission,
-		); err != nil {
-			fmt.Printf("Failed to pay commission to validator %s, rolling back transactions", val.Address)
-			for rollbackIdx := 0; rollbackIdx < valIdx; rollbackIdx++ {
-				if err := k.coinKeeper.SendCoins(ctx, val.Address, payer, singleValCommission); err != nil {
-					panic(fmt.Sprintf("failed to rollback commission to validator %s: %v", val.Address, err))
-				}
-			}
-
-			return fmt.Errorf("failed to pay commission to validator %s: %v", val.Address, err)
-		}
+		k.distrKeeper.AllocateTokensToValidator(ctx, consVal, sdk.NewDecCoins(singleValCommission))
 	}
 
-	return nil
+	return priceAfterCommission, nil
 }
 
 func getCommission(price sdk.Coins, rat64 float64) sdk.Coins {

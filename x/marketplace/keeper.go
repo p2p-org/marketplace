@@ -81,7 +81,7 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	return k.UpdateNFT(ctx, nft)
 }
 
-func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price sdk.Coins) error {
+func (k Keeper) SellNFT(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
 	nft, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
@@ -92,6 +92,7 @@ func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price 
 	}
 	nft.SetPrice(price)
 	nft.SetOnSale(true)
+	nft.SetSellerBeneficiary(beneficiary)
 
 	return k.UpdateNFT(ctx, nft)
 }

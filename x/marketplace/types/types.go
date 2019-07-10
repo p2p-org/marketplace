@@ -9,9 +9,10 @@ import (
 )
 
 type NFT struct {
-	xnft.BaseNFT `json:"nft"`
-	Price        sdk.Coins `json:"price"`
-	OnSale       bool      `json:"on_sale"`
+	xnft.BaseNFT      `json:"nft"`
+	Price             sdk.Coins      `json:"price"`
+	OnSale            bool           `json:"on_sale"`
+	SellerBeneficiary sdk.AccAddress `json:"seller_beneficiary"`
 }
 
 func NewNFT(nft xnft.BaseNFT, price sdk.Coins) *NFT {
@@ -42,4 +43,8 @@ func (m *NFT) IsOnSale() bool {
 
 func (m *NFT) SetOnSale(status bool) {
 	m.OnSale = status
+}
+
+func (m *NFT) SetSellerBeneficiary(addr sdk.AccAddress) {
+	m.SellerBeneficiary = addr
 }
