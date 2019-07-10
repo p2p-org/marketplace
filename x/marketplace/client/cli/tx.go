@@ -3,8 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -12,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/spf13/cobra"
 )
 
 func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {

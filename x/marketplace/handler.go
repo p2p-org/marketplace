@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	// TODO: make commissions configurable.
+	// TODO: make commissions configurable. Note that BeneficiariesCommission
+	// TODO: should be split into two separate values, SellerBeneficiaryCommission
+	// TODO: and BuyerBeneficiaryCommission.
 	ValidatorsCommission    = 0.01
 	BeneficiariesCommission = 0.015
 )
@@ -138,13 +140,15 @@ func doCommissions(
 	logger := ctx.Logger()
 
 	// Check that payer has enough funds (for both the commission and the asset itself).
-	totalCommission := getCommission(price, ValidatorsCommission+BeneficiariesCommission)
-	logger.Info("calculated total commission", "total_commission", totalCommission.String())
-
-	priceAfterCommission = price.Sub(totalCommission)
-	if !k.coinKeeper.HasCoins(ctx, payer, totalCommission) {
+	if !k.coinKeeper.HasCoins(ctx, payer, price) {
 		return nil, fmt.Errorf("user %s does not have enough funds", payer.String())
 	}
+	logger.Info("user has enough funds, o.k.")
+
+	totalCommission := getCommission(price, ValidatorsCommission+BeneficiariesCommission)
+	priceAfterCommission = price.Sub(totalCommission)
+	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
+		"price_after_commission", priceAfterCommission.String())
 
 	// Pay commission to the beneficiaries.
 	beneficiaryCommission := getCommission(price, BeneficiariesCommission/2)
