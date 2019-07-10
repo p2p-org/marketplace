@@ -3,9 +3,8 @@ package marketplace
 import (
 	"testing"
 
-	"github.com/magiconair/properties/assert"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/magiconair/properties/assert"
 )
 
 func TestGetCommission(t *testing.T) {
