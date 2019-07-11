@@ -4,24 +4,35 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/x/bank"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/cosmos/cosmos-sdk/x/distribution"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 )
 
 // Keeper maintains the link to data storage and exposes getter/setter methods for the various parts of the state machine
 type Keeper struct {
-	coinKeeper bank.Keeper
-	storeKey   sdk.StoreKey // Unexposed key to access store from sdk.Context
-	cdc        *codec.Codec // The wire codec for binary encoding/decoding.
+	coinKeeper    bank.Keeper
+	stakingKeeper staking.Keeper
+	distrKeeper   distribution.Keeper
+	storeKey      sdk.StoreKey // Unexposed key to access store from sdk.Context
+	cdc           *codec.Codec // The wire codec for binary encoding/decoding.
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
-func NewKeeper(coinKeeper bank.Keeper, storeKey sdk.StoreKey, cdc *codec.Codec) Keeper {
+func NewKeeper(
+	coinKeeper bank.Keeper,
+	stakingKeeper staking.Keeper,
+	distrKeeper distribution.Keeper,
+	storeKey sdk.StoreKey,
+	cdc *codec.Codec,
+) Keeper {
 	return Keeper{
-		coinKeeper: coinKeeper,
-		storeKey:   storeKey,
-		cdc:        cdc,
+		coinKeeper:    coinKeeper,
+		stakingKeeper: stakingKeeper,
+		distrKeeper:   distrKeeper,
+		storeKey:      storeKey,
+		cdc:           cdc,
 	}
 }
 
@@ -70,7 +81,7 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	return k.UpdateNFT(ctx, nft)
 }
 
-func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price sdk.Coin) error {
+func (k Keeper) SellNFT(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
 	nft, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
@@ -81,6 +92,7 @@ func (k Keeper) SellNFT(ctx sdk.Context, id string, owner sdk.AccAddress, price 
 	}
 	nft.SetPrice(price)
 	nft.SetOnSale(true)
+	nft.SetSellerBeneficiary(beneficiary)
 
 	return k.UpdateNFT(ctx, nft)
 }

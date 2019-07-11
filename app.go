@@ -180,6 +180,8 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 
 	app.nsKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
+		app.stakingKeeper,
+		app.distrKeeper,
 		app.keyNS,
 		app.cdc,
 	)
