@@ -171,12 +171,12 @@ func doCommissions(
 	}
 
 	// First we take tokens from the payer, then we allocate tokens to validators via distribution module.
-	totalValsCommission := getCommission(price, BeneficiariesCommission)
+	totalValsCommission := getCommission(price, ValidatorsCommission)
 	if _, err := k.coinKeeper.SubtractCoins(ctx, payer, totalValsCommission); err != nil {
 		return nil, fmt.Errorf("failed to take validators commission from payer: %v", err)
 	}
 	logger.Info("wrote off validators commission")
-	singleValCommission := getCommission(price, BeneficiariesCommission/float64(len(vals)))
+	singleValCommission := getCommission(price, ValidatorsCommission/float64(len(vals)))
 	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
 		"num_validators", len(vals))
 	for _, val := range vals {
