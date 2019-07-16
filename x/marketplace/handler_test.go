@@ -12,11 +12,11 @@ func TestGetCommission(t *testing.T) {
 
 	// Single token case (validators + beneficiaries).
 	expectedValsCommission := sdk.NewCoins(sdk.NewCoin("test", sdk.NewInt(1)))
-	valsCommission := getCommission(price, ValidatorsCommission)
+	valsCommission := GetCommission(price, ValidatorsCommission)
 	assert.Equal(t, valsCommission, expectedValsCommission)
 
 	expectedBeneficiariesCommission := sdk.NewCoins(sdk.NewCoin("test", sdk.NewInt(2)))
-	beneficiariesCommission := getCommission(price, BeneficiariesCommission)
+	beneficiariesCommission := GetCommission(price, BeneficiariesCommission)
 	assert.Equal(t, beneficiariesCommission, expectedBeneficiariesCommission)
 
 	// Multiple tokens case (validators).
@@ -28,6 +28,6 @@ func TestGetCommission(t *testing.T) {
 		sdk.NewCoin("test1", sdk.NewInt(1)),
 		sdk.NewCoin("test2", sdk.NewInt(1)),
 	)
-	valsCommission = getCommission(price, ValidatorsCommission)
+	valsCommission = GetCommission(price, ValidatorsCommission)
 	assert.Equal(t, valsCommission, expectedValsCommission)
 }

@@ -145,13 +145,13 @@ func doCommissions(
 	}
 	logger.Info("user has enough funds, o.k.")
 
-	totalCommission := getCommission(price, ValidatorsCommission+BeneficiariesCommission)
+	totalCommission := GetCommission(price, ValidatorsCommission+BeneficiariesCommission)
 	priceAfterCommission = price.Sub(totalCommission)
 	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
 		"price_after_commission", priceAfterCommission.String())
 
 	// Pay commission to the beneficiaries.
-	beneficiaryCommission := getCommission(price, BeneficiariesCommission/2)
+	beneficiaryCommission := GetCommission(price, BeneficiariesCommission/2)
 	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
 	if err := k.coinKeeper.SendCoins(ctx, payer, sellerBeneficiary, beneficiaryCommission); err != nil {
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
@@ -171,12 +171,12 @@ func doCommissions(
 	}
 
 	// First we take tokens from the payer, then we allocate tokens to validators via distribution module.
-	totalValsCommission := getCommission(price, ValidatorsCommission)
+	totalValsCommission := GetCommission(price, ValidatorsCommission)
 	if _, err := k.coinKeeper.SubtractCoins(ctx, payer, totalValsCommission); err != nil {
 		return nil, fmt.Errorf("failed to take validators commission from payer: %v", err)
 	}
 	logger.Info("wrote off validators commission")
-	singleValCommission := getCommission(price, ValidatorsCommission/float64(len(vals)))
+	singleValCommission := GetCommission(price, ValidatorsCommission/float64(len(vals)))
 	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
 		"num_validators", len(vals))
 	for _, val := range vals {
@@ -187,7 +187,7 @@ func doCommissions(
 	return priceAfterCommission, nil
 }
 
-func getCommission(price sdk.Coins, rat64 float64) sdk.Coins {
+func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 	// TODO: maybe we can do it somehow easier.
 	var rat = new(big.Rat)
 	rat = rat.SetFloat64(rat64)
