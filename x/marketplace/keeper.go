@@ -3,6 +3,8 @@ package marketplace
 import (
 	"fmt"
 
+	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
@@ -17,6 +19,7 @@ type Keeper struct {
 	distrKeeper   distribution.Keeper
 	storeKey      sdk.StoreKey // Unexposed key to access store from sdk.Context
 	cdc           *codec.Codec // The wire codec for binary encoding/decoding.
+	config        *config.MPServerConfig
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -26,6 +29,7 @@ func NewKeeper(
 	distrKeeper distribution.Keeper,
 	storeKey sdk.StoreKey,
 	cdc *codec.Codec,
+	cfg *config.MPServerConfig,
 ) Keeper {
 	return Keeper{
 		coinKeeper:    coinKeeper,
@@ -33,6 +37,7 @@ func NewKeeper(
 		distrKeeper:   distrKeeper,
 		storeKey:      storeKey,
 		cdc:           cdc,
+		config:        cfg,
 	}
 }
 

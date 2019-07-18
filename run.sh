@@ -7,6 +7,10 @@ echo "Building..."
 make install
 
 echo "Initialization..."
+# to specify maximum beneficiary fee use flag
+# max-commission [0.05]
+# example:
+# mpd init node0 --chain-id mpchain --max-commission 0.07
 mpd init node0 --chain-id mpchain
 
 echo "Adding keys..."

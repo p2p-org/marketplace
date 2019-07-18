@@ -1,12 +1,37 @@
 # DGaming Marketplace
 
-To run a node:
+## Init and run a node
+
+Init node configuration with:
+
+```bash 
+mpd init [node_name] --chain-id [chain_id] 
+```
+
+To specify maximum beneficiary fee init with flag 'max-commission'. Example:
+
+```bash
+mpd init node0 --chain-id mpchain --max-commission 0.07
+```
+
+To run a node with a script:
 
 ```bash
 ./run.sh
 ```
 
 This will start a node with two users, `user1` and `user2` (both are validators).
+
+## Client commands
+To get information about account:
+```
+$ mpcli query account $(mpcli keys show [name] -a)
+```
+Example:
+
+```
+$ mpcli query account $(mpcli keys show user1 -a)
+```
 
 To mint an NFT for that user:
 
@@ -36,7 +61,18 @@ To buy a token:
 mpcli tx marketplace buy 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user2
 ```
 
-# Full scenario
+To buy a token with specified commission add 'beneficiary-commission' (--beneficiary-commission or -c) flag
+
+```bash
+mpcli tx marketplace buy 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn -c 0.013 --from user2
+```
+or
+```bash
+mpcli tx marketplace buy 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --beneficiary-commission 0.013 --from user2
+```
+
+
+## Full scenario
 
 After running `./run.sh`, 4 users are created: `user1` (minter and seller), `user2` (buyer), `sellerBeneficiary` and `buyerBeneficiary` (each has 1000token coins in the beginning).
 
@@ -76,7 +112,13 @@ Password to sign with 'user1':
   "height": "0",
   "txhash": "12AAB743F568E72E22E05C040AFA9CB5450C70FF709AFBFF1B51D6A8BDED2359"
 }
+```
+List nfts:
+```
 $ mpcli query marketplace nfts
+```
+*Output:*
+```
 {
   "nfts": [
     {

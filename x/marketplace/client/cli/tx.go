@@ -10,7 +10,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
@@ -112,7 +114,7 @@ func GetCmdSellNFT(cdc *codec.Codec) *cobra.Command {
 }
 
 func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "buy [token_id] [beneficiary]",
 		Short: "buy an NFT",
 		Args:  cobra.ExactArgs(2),
@@ -124,8 +126,9 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to parse beneficiary address: %v", err)
 			}
+			commission := viper.GetString(mptypes.FlagBeneficiaryCommission)
 
-			msg := types.NewMsgBuyNFT(cliCtx.GetFromAddress(), beneficiary, args[0])
+			msg := types.NewMsgBuyNFT(cliCtx.GetFromAddress(), beneficiary, args[0], commission)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -133,4 +136,7 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
+	cmd.Flags().Float64P(mptypes.FlagBeneficiaryCommission, mptypes.FlagBeneficiaryCommissionShort, mptypes.DefaultBeneficiariesCommission,
+		"beneficiary fee, if left blank will be set to default")
+	return cmd
 }

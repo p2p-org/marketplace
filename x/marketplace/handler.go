@@ -3,19 +3,13 @@ package marketplace
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
+	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/google/uuid"
 	abci_types "github.com/tendermint/tendermint/abci/types"
-)
-
-var (
-	// TODO: make commissions configurable. Note that BeneficiariesCommission
-	// TODO: should be split into two separate values, SellerBeneficiaryCommission
-	// TODO: and BuyerBeneficiaryCommission.
-	ValidatorsCommission    = 0.01
-	BeneficiariesCommission = 0.015
 )
 
 // NewHandler returns a handler for "marketplace" type messages.
@@ -101,7 +95,20 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	priceAfterCommission, err := doCommissions(ctx, k, msg.Buyer, msg.Beneficiary, nft.SellerBeneficiary, nft.GetPrice())
+	beneficiariesCommission := mptypes.DefaultBeneficiariesCommission
+	parsed, err := strconv.ParseFloat(msg.BeneficiaryCommission, 64)
+	if err == nil {
+		beneficiariesCommission = parsed
+	}
+	if beneficiariesCommission > k.config.MaximumBeneficiaryCommission {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")),
+		}
+	}
+
+	priceAfterCommission, err := doCommissions(ctx, k, msg.Buyer, msg.Beneficiary, nft.SellerBeneficiary, nft.GetPrice(), beneficiariesCommission)
 	if err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -136,6 +143,7 @@ func doCommissions(
 	sellerBeneficiary,
 	buyerBeneficiary sdk.AccAddress,
 	price sdk.Coins,
+	beneficiariesCommission float64,
 ) (priceAfterCommission sdk.Coins, err error) {
 	logger := ctx.Logger()
 
@@ -145,14 +153,34 @@ func doCommissions(
 	}
 	logger.Info("user has enough funds, o.k.")
 
-	totalCommission := GetCommission(price, ValidatorsCommission+BeneficiariesCommission)
+	votes := ctx.VoteInfos()
+	var vals []abci_types.Validator
+	for _, vote := range votes {
+		if vote.SignedLastBlock {
+			vals = append(vals, vote.Validator)
+		}
+	}
+
+	// first calculate all commissions and total commission as sum of them
+	singleValCommission := GetCommission(price, mptypes.DefaultValidatorsCommission/float64(len(vals)))
+	totalValsCommission := sdk.NewCoins()
+	for i := 0; i < len(vals); i++ {
+		totalValsCommission = totalValsCommission.Add(singleValCommission)
+	}
+
+	totalCommission := sdk.NewCoins()
+	beneficiaryCommission := GetCommission(price, beneficiariesCommission/2)
+	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
+
+	totalCommission = totalCommission.Add(beneficiaryCommission)
+	totalCommission = totalCommission.Add(beneficiaryCommission)
+	totalCommission = totalCommission.Add(totalValsCommission)
+
 	priceAfterCommission = price.Sub(totalCommission)
 	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
 		"price_after_commission", priceAfterCommission.String())
 
 	// Pay commission to the beneficiaries.
-	beneficiaryCommission := GetCommission(price, BeneficiariesCommission/2)
-	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
 	if err := k.coinKeeper.SendCoins(ctx, payer, sellerBeneficiary, beneficiaryCommission); err != nil {
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
@@ -162,21 +190,12 @@ func doCommissions(
 	}
 	logger.Info("payed buyer beneficiary commission", "buyer_beneficiary", buyerBeneficiary.String())
 
-	votes := ctx.VoteInfos()
-	var vals []abci_types.Validator
-	for _, vote := range votes {
-		if vote.SignedLastBlock {
-			vals = append(vals, vote.Validator)
-		}
-	}
-
 	// First we take tokens from the payer, then we allocate tokens to validators via distribution module.
-	totalValsCommission := GetCommission(price, ValidatorsCommission)
 	if _, err := k.coinKeeper.SubtractCoins(ctx, payer, totalValsCommission); err != nil {
 		return nil, fmt.Errorf("failed to take validators commission from payer: %v", err)
 	}
 	logger.Info("wrote off validators commission")
-	singleValCommission := GetCommission(price, ValidatorsCommission/float64(len(vals)))
+
 	logger.Info("paying validators", "validator_commission", singleValCommission.String(),
 		"num_validators", len(vals))
 	for _, val := range vals {

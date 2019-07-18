@@ -1,6 +1,12 @@
 package marketplace_test
 
 import (
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
@@ -15,17 +21,13 @@ import (
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	app "github.com/dgamingfoundation/marketplace"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmTypes "github.com/tendermint/tendermint/types"
-	"io/ioutil"
-	"math/rand"
-	"os"
-	"testing"
-	"time"
 )
 
 type marketplaceKeeperTest struct {
@@ -138,7 +140,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	}
 
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
-		mpKeeperTest.distrKeeper, mpStore, cdc)
+		mpKeeperTest.distrKeeper, mpStore, cdc, config.DefaultMPServerConfig())
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 
@@ -224,7 +226,7 @@ func TestBuySellNFT(t *testing.T) {
 		result = handler(mpKeeperTest.ctx, *sellNFTMsg)
 		require.True(t, result.IsOK())
 
-		buyNFTMsg := types.NewMsgBuyNFT(mpKeeperTest.addrs[1], mpKeeperTest.addrs[3], nft.GetID())
+		buyNFTMsg := types.NewMsgBuyNFT(mpKeeperTest.addrs[1], mpKeeperTest.addrs[3], nft.GetID(), "")
 		result = handler(mpKeeperTest.ctx, *buyNFTMsg)
 		require.True(t, result.IsOK())
 

@@ -4,8 +4,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-const RouterKey = ModuleName // this was defined in your key.go file
-
 // --------------------------------------------------------------------------
 //
 // MsgMintNFT
@@ -172,15 +170,17 @@ func (m MsgSellNFT) GetSigners() []sdk.AccAddress {
 type MsgBuyNFT struct {
 	Buyer sdk.AccAddress `json:"buyer"`
 	// Beneficiary is the cosmos user who gets the commission for this transaction.
-	Beneficiary sdk.AccAddress `json:"beneficiary"`
-	TokenID     string         `json:"token_id"`
+	Beneficiary           sdk.AccAddress `json:"beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenID               string         `json:"token_id"`
 }
 
-func NewMsgBuyNFT(owner, beneficiary sdk.AccAddress, tokenID string) *MsgBuyNFT {
+func NewMsgBuyNFT(owner, beneficiary sdk.AccAddress, tokenID string, commission string) *MsgBuyNFT {
 	return &MsgBuyNFT{
-		Buyer:       owner,
-		Beneficiary: beneficiary,
-		TokenID:     tokenID,
+		Buyer:                 owner,
+		Beneficiary:           beneficiary,
+		BeneficiaryCommission: commission,
+		TokenID:               tokenID,
 	}
 }
 

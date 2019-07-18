@@ -2,7 +2,12 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+
+	"github.com/spf13/viper"
+
+	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -178,12 +183,15 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 			app.slashingKeeper.Hooks()),
 	)
 
+	srvCfg := ReadSrvConfig()
+	fmt.Printf("Server Config: \n %+v \n", srvCfg)
 	app.nsKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
 		app.stakingKeeper,
 		app.distrKeeper,
 		app.keyNS,
 		app.cdc,
+		srvCfg,
 	)
 
 	app.mm = module.NewManager(
@@ -296,4 +304,23 @@ func (app *nameServiceApp) ExportAppStateAndValidators(forZeroHeight bool, jailW
 	validators = staking.WriteValidators(ctx, app.stakingKeeper)
 
 	return appState, validators, nil
+}
+
+func ReadSrvConfig() *config.MPServerConfig {
+	var cfg *config.MPServerConfig
+	vCfg := viper.New()
+	vCfg.SetConfigName("server")
+	vCfg.AddConfigPath(DefaultNodeHome + "/config")
+	err := vCfg.ReadInConfig()
+	if err != nil {
+		fmt.Println("ERROR: server config file not found, error:", err)
+		return config.DefaultMPServerConfig()
+	}
+	fmt.Println(vCfg.GetString("maximum_beneficiary_commission"))
+	err = vCfg.Unmarshal(&cfg)
+	if err != nil {
+		fmt.Println("ERROR: could not unmarshal server config file, error:", err)
+		return config.DefaultMPServerConfig()
+	}
+	return cfg
 }
