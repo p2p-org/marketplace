@@ -36,7 +36,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "mint [uuid] [name] [description] [image] [token_uri]",
+		Use:   "mint [token_id] [name] [description] [image] [token_uri]",
 		Short: "mint a new NFT",
 		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,13 +45,13 @@ func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 
 			var (
 				owner       = cliCtx.GetFromAddress()
-				uuid        = args[0]
+				tokenID     = args[0]
 				name        = args[1]
 				description = args[2]
 				image       = args[3]
 				tokenURI    = args[4]
 			)
-			msg := types.NewMsgMintNFT(uuid, owner, name, description, image, tokenURI)
+			msg := types.NewMsgMintNFT(tokenID, owner, name, description, image, tokenURI)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}

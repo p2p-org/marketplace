@@ -32,7 +32,7 @@ type MintReq struct {
 	BaseReq rest.BaseReq `json:"base_req"`
 	Owner   string       `json:"owner"`
 
-	UUID        string `json:"uuid"`
+	TokenID     string `json:"token_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Image       string `json:"image"`
@@ -59,7 +59,7 @@ func mintHandler(cliCtx context.CLIContext) http.HandlerFunc {
 		}
 
 		// create the message
-		msg := types.NewMsgMintNFT(req.UUID, owner, req.Name, req.Description, req.Image, req.TokenURI)
+		msg := types.NewMsgMintNFT(req.TokenID, owner, req.Name, req.Description, req.Image, req.TokenURI)
 		err = msg.ValidateBasic()
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())

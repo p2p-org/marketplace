@@ -33,7 +33,7 @@ func NewHandler(keeper Keeper) sdk.Handler {
 func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result {
 	nft := NewNFT(
 		xnft.NewBaseNFT(
-			msg.UUID,
+			msg.TokenID,
 			msg.Owner,
 			msg.Name,
 			msg.Description,

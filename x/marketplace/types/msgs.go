@@ -11,7 +11,7 @@ import (
 // --------------------------------------------------------------------------
 
 type MsgMintNFT struct {
-	UUID        string         `json:"uuid"`
+	TokenID     string         `json:"token_id"`
 	Owner       sdk.AccAddress `json:"owner"`
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
@@ -20,7 +20,7 @@ type MsgMintNFT struct {
 }
 
 func NewMsgMintNFT(
-	uuid string,
+	TokenID string,
 	owner sdk.AccAddress,
 	name,
 	description,
@@ -28,7 +28,7 @@ func NewMsgMintNFT(
 	tokenURI string,
 ) *MsgMintNFT {
 	return &MsgMintNFT{
-		UUID:        uuid,
+		TokenID:     TokenID,
 		Owner:       owner,
 		Name:        name,
 		Description: description,
