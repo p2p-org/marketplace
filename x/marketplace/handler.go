@@ -8,7 +8,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
-	"github.com/google/uuid"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -34,7 +33,7 @@ func NewHandler(keeper Keeper) sdk.Handler {
 func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result {
 	nft := NewNFT(
 		xnft.NewBaseNFT(
-			uuid.New().String(),
+			msg.UUID,
 			msg.Owner,
 			msg.Name,
 			msg.Description,

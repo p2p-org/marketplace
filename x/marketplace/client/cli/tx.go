@@ -36,21 +36,22 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "mint [name] [description] [image] [token_uri]",
+		Use:   "mint [uuid] [name] [description] [image] [token_uri]",
 		Short: "mint a new NFT",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			var (
 				owner       = cliCtx.GetFromAddress()
-				name        = args[0]
-				description = args[1]
-				image       = args[2]
-				tokenURI    = args[3]
+				uuid        = args[0]
+				name        = args[1]
+				description = args[2]
+				image       = args[3]
+				tokenURI    = args[4]
 			)
-			msg := types.NewMsgMintNFT(owner, name, description, image, tokenURI)
+			msg := types.NewMsgMintNFT(uuid, owner, name, description, image, tokenURI)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}

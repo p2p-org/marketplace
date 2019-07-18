@@ -36,7 +36,7 @@ $ mpcli query account $(mpcli keys show user1 -a)
 To mint an NFT for that user:
 
 ```bash
-mpcli tx marketplace mint name description image token_uri --from user1
+mpcli tx marketplace mint $(uuidgen) name description image token_uri --from user1
 ```
 
 The token is **not** put on the market when minted.
@@ -79,7 +79,7 @@ After running `./run.sh`, 4 users are created: `user1` (minter and seller), `use
 Mint a new token:
 
 ```
-$ mpcli tx marketplace mint name description image token_uri --from user1
+$ mpcli tx marketplace mint $(uuidgen) name description image token_uri --from user1
 ```
 *Output:*
 ```
