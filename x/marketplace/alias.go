@@ -5,9 +5,13 @@ import (
 )
 
 const (
-	ModuleName               = types.ModuleName
-	RouterKey                = types.RouterKey
-	StoreKey                 = types.StoreKey
+	ModuleName = types.ModuleName
+	RouterKey  = types.RouterKey
+	StoreKey   = types.StoreKey
+
+	FungibleTokenCreationPrice = types.FungibleTokenCreationPrice
+	FungibleCommissionAddress  = types.FungibleCommissionAddress
+
 	MaxBeneficiaryCommission = types.FlagMaxCommission
 )
 
@@ -23,4 +27,8 @@ type (
 	MsgSellNFT     = types.MsgSellNFT
 	MsgBuyNFT      = types.MsgBuyNFT
 	NFT            = types.NFT
+	FungibleToken  = types.FungibleToken
+
+	MsgCreateFungibleToken    = types.MsgCreateFungibleToken
+	MsgTransferFungibleTokens = types.MsgTransferFungibleTokens
 )

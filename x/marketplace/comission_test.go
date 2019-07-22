@@ -76,6 +76,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	tkeyStaking := sdk.NewTransientStoreKey(staking.TStoreKey)
 	keySlashing := sdk.NewKVStoreKey(slashing.StoreKey)
 	keyDistr := sdk.NewKVStoreKey(distr.StoreKey)
+	keyRegisterCurrency := sdk.NewKVStoreKey("register_currency")
 
 	paramsKeeper := params.NewKeeper(cdc, keyParams, tkeyParams, params.DefaultCodespace)
 
@@ -135,12 +136,13 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.ms.MountStoreWithDB(keySlashing, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyStaking, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyDistr, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keyRegisterCurrency, sdk.StoreTypeIAVL, db)
 	if err := mpKeeperTest.ms.LoadLatestVersion(); err != nil {
 		return nil, err
 	}
 
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
-		mpKeeperTest.distrKeeper, mpStore, cdc, config.DefaultMPServerConfig())
+		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, cdc, config.DefaultMPServerConfig())
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 

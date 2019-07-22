@@ -17,4 +17,7 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgTransferNFT{}, "marketplace/TransferNFT", nil)
 	cdc.RegisterConcrete(MsgSellNFT{}, "marketplace/SellNFT", nil)
 	cdc.RegisterConcrete(MsgBuyNFT{}, "marketplace/BuyNFT", nil)
+	cdc.RegisterConcrete(MsgCreateFungibleToken{}, "marketplace/CreateFungibleToken", nil)
+	cdc.RegisterConcrete(MsgTransferFungibleTokens{}, "marketplace/TransferFungibleTokens", nil)
+	cdc.RegisterConcrete(FungibleToken{}, "marketplace/FungibleToken", nil)
 }

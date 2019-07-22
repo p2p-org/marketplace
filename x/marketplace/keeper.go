@@ -14,12 +14,13 @@ import (
 
 // Keeper maintains the link to data storage and exposes getter/setter methods for the various parts of the state machine
 type Keeper struct {
-	coinKeeper    bank.Keeper
-	stakingKeeper staking.Keeper
-	distrKeeper   distribution.Keeper
-	storeKey      sdk.StoreKey // Unexposed key to access store from sdk.Context
-	cdc           *codec.Codec // The wire codec for binary encoding/decoding.
-	config        *config.MPServerConfig
+	coinKeeper               bank.Keeper
+	stakingKeeper            staking.Keeper
+	distrKeeper              distribution.Keeper
+	storeKey                 sdk.StoreKey // Unexposed key to access store from sdk.Context
+	currencyRegistryStoreKey *sdk.KVStoreKey
+	cdc                      *codec.Codec // The wire codec for binary encoding/decoding.
+	config                   *config.MPServerConfig
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -28,16 +29,18 @@ func NewKeeper(
 	stakingKeeper staking.Keeper,
 	distrKeeper distribution.Keeper,
 	storeKey sdk.StoreKey,
+	currencyRegistryStoreKey *sdk.KVStoreKey,
 	cdc *codec.Codec,
 	cfg *config.MPServerConfig,
 ) Keeper {
 	return Keeper{
-		coinKeeper:    coinKeeper,
-		stakingKeeper: stakingKeeper,
-		distrKeeper:   distrKeeper,
-		storeKey:      storeKey,
-		cdc:           cdc,
-		config:        cfg,
+		coinKeeper:               coinKeeper,
+		stakingKeeper:            stakingKeeper,
+		distrKeeper:              distrKeeper,
+		storeKey:                 storeKey,
+		currencyRegistryStoreKey: currencyRegistryStoreKey,
+		cdc:                      cdc,
+		config:                   cfg,
 	}
 }
 
@@ -69,6 +72,12 @@ func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
 // Get an iterator over all NFTs.
 func (k Keeper) GetNFTsIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.storeKey)
+	return sdk.KVStorePrefixIterator(store, nil)
+}
+
+// Get an iterator over all registered currencies
+func (k Keeper) GetRegisteredCurrenciesIterator(ctx sdk.Context) sdk.Iterator {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	return sdk.KVStorePrefixIterator(store, nil)
 }
 
@@ -110,5 +119,54 @@ func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 
 	bz := k.cdc.MustMarshalJSON(newToken)
 	store.Set([]byte(newToken.GetID()), bz)
+	return nil
+}
+
+// Creates a new fungible token with given supply and denom for FungibleTokenCreationPrice
+func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, denom string, amount int64) error {
+	logger := ctx.Logger()
+
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	if store.Has([]byte(denom)) {
+		return fmt.Errorf("currency already exists")
+	}
+
+	commissionAddress, err := sdk.AccAddressFromBech32(FungibleCommissionAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get comissionAddress: %v", err)
+	}
+
+	initialBalances := getBalances(ctx, k, creator, commissionAddress)
+
+	if err := k.coinKeeper.SendCoins(ctx, creator, commissionAddress,
+		sdk.NewCoins(sdk.NewCoin("token", sdk.NewInt(FungibleTokenCreationPrice)))); err != nil {
+		rollbackCommissions(ctx, k, logger, initialBalances)
+		return fmt.Errorf("failed to send coins to comissionAddress")
+	}
+
+	if _, err := k.coinKeeper.AddCoins(ctx, creator, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))); err != nil {
+		rollbackCommissions(ctx, k, logger, initialBalances)
+		return fmt.Errorf("failed to add coins: %v", err)
+	}
+	k.registerFungibleTokensCurrency(ctx, FungibleToken{Creator: creator, Denom: denom, EmissionAmount: amount})
+	return nil
+}
+
+// Registers fungible token for prevent double creation
+func (k Keeper) registerFungibleTokensCurrency(ctx sdk.Context, ft FungibleToken) {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	store.Set([]byte(ft.Denom), k.cdc.MustMarshalBinaryBare(ft))
+}
+
+// Transfers amount of fungible tokens from one account to another
+func (k Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipient sdk.AccAddress, denom string, amount int64) error {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	if !store.Has([]byte(denom)) {
+		return fmt.Errorf("unknown currency")
+	}
+
+	if err := k.coinKeeper.SendCoins(ctx, currencyOwner, recipient, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))); err != nil {
+		return fmt.Errorf("failed to transfer tokens")
+	}
 	return nil
 }

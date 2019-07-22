@@ -67,17 +67,19 @@ type nameServiceApp struct {
 	cdc *codec.Codec
 
 	// Keys to access the substores
-	keyMain          *sdk.KVStoreKey
-	keyAccount       *sdk.KVStoreKey
-	keyFeeCollection *sdk.KVStoreKey
-	keyStaking       *sdk.KVStoreKey
-	tkeyStaking      *sdk.TransientStoreKey
-	keyDistr         *sdk.KVStoreKey
-	tkeyDistr        *sdk.TransientStoreKey
-	keyNS            *sdk.KVStoreKey
-	keyParams        *sdk.KVStoreKey
-	tkeyParams       *sdk.TransientStoreKey
-	keySlashing      *sdk.KVStoreKey
+	keyMain             *sdk.KVStoreKey
+	keyAccount          *sdk.KVStoreKey
+	keyFeeCollection    *sdk.KVStoreKey
+	keyStaking          *sdk.KVStoreKey
+	tkeyStaking         *sdk.TransientStoreKey
+	keyDistr            *sdk.KVStoreKey
+	tkeyDistr           *sdk.TransientStoreKey
+	keyNS               *sdk.KVStoreKey
+	keyRegisterCurrency *sdk.KVStoreKey
+
+	keyParams   *sdk.KVStoreKey
+	tkeyParams  *sdk.TransientStoreKey
+	keySlashing *sdk.KVStoreKey
 
 	// Keepers
 	accountKeeper       auth.AccountKeeper
@@ -107,17 +109,18 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 		BaseApp: bApp,
 		cdc:     cdc,
 
-		keyMain:          sdk.NewKVStoreKey(bam.MainStoreKey),
-		keyAccount:       sdk.NewKVStoreKey(auth.StoreKey),
-		keyFeeCollection: sdk.NewKVStoreKey(auth.FeeStoreKey),
-		keyStaking:       sdk.NewKVStoreKey(staking.StoreKey),
-		tkeyStaking:      sdk.NewTransientStoreKey(staking.TStoreKey),
-		keyDistr:         sdk.NewKVStoreKey(distr.StoreKey),
-		tkeyDistr:        sdk.NewTransientStoreKey(distr.TStoreKey),
-		keyNS:            sdk.NewKVStoreKey(marketplace.StoreKey),
-		keyParams:        sdk.NewKVStoreKey(params.StoreKey),
-		tkeyParams:       sdk.NewTransientStoreKey(params.TStoreKey),
-		keySlashing:      sdk.NewKVStoreKey(slashing.StoreKey),
+		keyMain:             sdk.NewKVStoreKey(bam.MainStoreKey),
+		keyAccount:          sdk.NewKVStoreKey(auth.StoreKey),
+		keyFeeCollection:    sdk.NewKVStoreKey(auth.FeeStoreKey),
+		keyStaking:          sdk.NewKVStoreKey(staking.StoreKey),
+		tkeyStaking:         sdk.NewTransientStoreKey(staking.TStoreKey),
+		keyDistr:            sdk.NewKVStoreKey(distr.StoreKey),
+		tkeyDistr:           sdk.NewTransientStoreKey(distr.TStoreKey),
+		keyNS:               sdk.NewKVStoreKey(marketplace.StoreKey),
+		keyRegisterCurrency: sdk.NewKVStoreKey("register_currency"),
+		keyParams:           sdk.NewKVStoreKey(params.StoreKey),
+		tkeyParams:          sdk.NewTransientStoreKey(params.TStoreKey),
+		keySlashing:         sdk.NewKVStoreKey(slashing.StoreKey),
 	}
 
 	// The ParamsKeeper handles parameter storage for the application
@@ -190,6 +193,7 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 		app.stakingKeeper,
 		app.distrKeeper,
 		app.keyNS,
+		app.keyRegisterCurrency,
 		app.cdc,
 		srvCfg,
 	)
@@ -247,6 +251,7 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 		app.tkeyDistr,
 		app.keySlashing,
 		app.keyNS,
+		app.keyRegisterCurrency,
 		app.keyParams,
 		app.tkeyParams,
 	)

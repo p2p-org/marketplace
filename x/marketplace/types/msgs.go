@@ -213,3 +213,86 @@ func (m MsgBuyNFT) GetSignBytes() []byte {
 func (m MsgBuyNFT) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Buyer}
 }
+
+type MsgCreateFungibleToken struct {
+	Creator sdk.AccAddress `json:"creator"`
+	Denom   string         `json:"denom"`
+	Amount  int64          `json:"amount"`
+}
+
+func NewMsgCreateFungibleToken(creator sdk.AccAddress, denom string, amount int64) *MsgCreateFungibleToken {
+	return &MsgCreateFungibleToken{
+		Creator: creator,
+		Denom:   denom,
+		Amount:  amount,
+	}
+}
+
+func (m MsgCreateFungibleToken) Route() string { return RouterKey }
+
+func (m MsgCreateFungibleToken) Type() string { return "create_fungible_token" }
+
+func (m MsgCreateFungibleToken) ValidateBasic() sdk.Error {
+	if m.Creator.Empty() {
+		return sdk.ErrInvalidAddress(m.Creator.String())
+	}
+	if len(m.Denom) < 3 || len(m.Denom) > 16 {
+		return sdk.ErrUnknownRequest("denom is not valid")
+	}
+	if m.Amount <= 0 {
+		return sdk.ErrUnknownRequest("amount is invalid")
+	}
+	return nil
+}
+
+func (m MsgCreateFungibleToken) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+func (m MsgCreateFungibleToken) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Creator}
+}
+
+type MsgTransferFungibleTokens struct {
+	Owner     sdk.AccAddress `json:"owner"`
+	Recipient sdk.AccAddress `json:"recipient"`
+	Denom     string         `json:"denom"`
+	Amount    int64          `json:"amount"`
+}
+
+func NewMsgTransferFungibleTokens(owner, recipient sdk.AccAddress, denom string, amount int64) *MsgTransferFungibleTokens {
+	return &MsgTransferFungibleTokens{
+		Owner:     owner,
+		Recipient: recipient,
+		Denom:     denom,
+		Amount:    amount,
+	}
+}
+
+func (m MsgTransferFungibleTokens) Route() string { return RouterKey }
+
+func (m MsgTransferFungibleTokens) Type() string { return "transfer_coins" }
+
+func (m MsgTransferFungibleTokens) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if m.Recipient.Empty() {
+		return sdk.ErrInvalidAddress(m.Recipient.String())
+	}
+	if len(m.Denom) < 3 || len(m.Denom) > 16 {
+		return sdk.ErrUnknownRequest("denom is not valid")
+	}
+	if m.Amount <= 0 {
+		return sdk.ErrUnknownRequest("amount is invalid")
+	}
+	return nil
+}
+
+func (m MsgTransferFungibleTokens) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+func (m MsgTransferFungibleTokens) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}

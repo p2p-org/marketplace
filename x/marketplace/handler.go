@@ -24,11 +24,37 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgSellNFT(ctx, keeper, msg)
 		case MsgBuyNFT:
 			return handleMsgBuyNFT(ctx, keeper, msg)
+		case MsgCreateFungibleToken:
+			return handleMsgCreateFungibleTokensCurrency(ctx, keeper, msg)
+		case MsgTransferFungibleTokens:
+			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
 		}
 	}
+}
+
+func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, keeper Keeper, msg MsgCreateFungibleToken) sdk.Result {
+	if err := keeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to create currency: %v", err)),
+		}
+	}
+	return sdk.Result{}
+}
+
+func handleMsgTransferFungibleTokens(ctx sdk.Context, keeper Keeper, msg MsgTransferFungibleTokens) sdk.Result {
+	if err := keeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to transfer coins: %v", err)),
+		}
+	}
+	return sdk.Result{}
 }
 
 func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result {

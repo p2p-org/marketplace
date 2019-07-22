@@ -71,6 +71,15 @@ or
 mpcli tx marketplace buy 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --beneficiary-commission 0.013 --from user2
 ```
 
+To create some number of fungible tokens:
+```bash
+mpcli tx marketplace createFT fungible 1000 --from user1
+```
+
+To transfer some amount of fungible tokens:
+```bash
+mpcli tx marketplace transferFT $(mpcli keys show user1 -a) fungible 500  --from user1
+```
 
 ## Full scenario
 

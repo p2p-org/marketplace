@@ -2,13 +2,13 @@ package marketplace
 
 import (
 	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 type GenesisState struct {
-	NFTRecords []*NFT `json:"nft_records"`
+	NFTRecords           []*NFT          `json:"nft_records"`
+	RegisteredCurrencies []FungibleToken `json:"registered_tokens"`
 }
 
 func NewGenesisState(nftRecords []*NFT) GenesisState {
@@ -32,19 +32,33 @@ func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.Valid
 			panic(fmt.Sprintf("failed to InitGenesis: %v", err))
 		}
 	}
+
+	for _, currency := range data.RegisteredCurrencies {
+		keeper.registerFungibleTokensCurrency(ctx, currency)
+	}
 	return []abci.ValidatorUpdate{}
 }
 
 func ExportGenesis(ctx sdk.Context, k Keeper) GenesisState {
-	var records []*NFT
-	iterator := k.GetNFTsIterator(ctx)
-	for ; iterator.Valid(); iterator.Next() {
-		id := string(iterator.Key())
+	var (
+		records    []*NFT
+		currencies []FungibleToken
+		currency   FungibleToken
+	)
+	nftIterator := k.GetNFTsIterator(ctx)
+	for ; nftIterator.Valid(); nftIterator.Next() {
+		id := string(nftIterator.Key())
 		nft, err := k.GetNFT(ctx, id)
 		if err != nil {
 			panic(fmt.Sprintf("failed to ExportGenesis: %v", err))
 		}
 		records = append(records, nft)
 	}
-	return GenesisState{NFTRecords: records}
+
+	currIterator := k.GetRegisteredCurrenciesIterator(ctx)
+	for ; currIterator.Valid(); currIterator.Next() {
+		k.cdc.MustUnmarshalBinaryBare(currIterator.Value(), &currency)
+		currencies = append(currencies, currency)
+	}
+	return GenesisState{NFTRecords: records, RegisteredCurrencies: currencies}
 }

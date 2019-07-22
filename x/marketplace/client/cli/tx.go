@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -29,6 +30,8 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdTransferNFT(cdc),
 		GetCmdSellNFT(cdc),
 		GetCmdBuyNFT(cdc),
+		GetCmdCreateFungibleToken(cdc),
+		GetCmdTransferFungibleTokens(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -140,4 +143,57 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 	cmd.Flags().Float64P(mptypes.FlagBeneficiaryCommission, mptypes.FlagBeneficiaryCommissionShort, mptypes.DefaultBeneficiariesCommission,
 		"beneficiary fee, if left blank will be set to default")
 	return cmd
+}
+
+func GetCmdCreateFungibleToken(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "createFT [denom] [amount]",
+		Short: "create a fungible token",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			amount, err := strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("failed to parse amount: %v", err)
+			}
+
+			msg := types.NewMsgCreateFungibleToken(cliCtx.GetFromAddress(), args[0], int64(amount))
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func GetCmdTransferFungibleTokens(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "transferFT [recipient] [denom] [amount]",
+		Short: "transfer fungible tokens to another account",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			recipient, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse recipient address: %v", err)
+			}
+
+			amount, err := strconv.Atoi(args[2])
+			if err != nil {
+				return fmt.Errorf("failed to parse amount: %v", err)
+			}
+
+			msg := types.NewMsgTransferFungibleTokens(cliCtx.GetFromAddress(), recipient, args[1], int64(amount))
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
 }

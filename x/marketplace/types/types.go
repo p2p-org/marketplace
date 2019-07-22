@@ -8,6 +8,18 @@ import (
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 )
 
+type FungibleToken struct {
+	Denom          string         `json:"denom"`
+	EmissionAmount int64          `json:"emission_amount"`
+	Creator        sdk.AccAddress `json:"creator"`
+}
+
+func (c FungibleToken) String() string {
+	return strings.TrimSpace(fmt.Sprintf(`Creator: %s
+EmissionAmount: %d
+Denom: %s`, c.Creator.String(), c.EmissionAmount, c.Denom))
+}
+
 type NFT struct {
 	xnft.BaseNFT      `json:"nft"`
 	Price             sdk.Coins      `json:"price"`
