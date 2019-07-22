@@ -9,6 +9,7 @@ import (
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // NewHandler returns a handler for "marketplace" type messages.
@@ -107,7 +108,16 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	priceAfterCommission, err := doCommissions(ctx, k, msg.Buyer, msg.Beneficiary, nft.SellerBeneficiary, nft.GetPrice(), beneficiariesCommission)
+	priceAfterCommission, err := doNFTCommissions(
+		ctx,
+		k,
+		msg.Buyer,
+		nft.Owner,
+		msg.Beneficiary,
+		nft.SellerBeneficiary,
+		nft.GetPrice(),
+		beneficiariesCommission,
+	)
 	if err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -135,10 +145,11 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 	return sdk.Result{}
 }
 
-func doCommissions(
+func doNFTCommissions(
 	ctx sdk.Context,
 	k Keeper,
-	payer,
+	buyer,
+	seller,
 	sellerBeneficiary,
 	buyerBeneficiary sdk.AccAddress,
 	price sdk.Coins,
@@ -146,9 +157,9 @@ func doCommissions(
 ) (priceAfterCommission sdk.Coins, err error) {
 	logger := ctx.Logger()
 
-	// Check that payer has enough funds (for both the commission and the asset itself).
-	if !k.coinKeeper.HasCoins(ctx, payer, price) {
-		return nil, fmt.Errorf("user %s does not have enough funds", payer.String())
+	// Check that buyer has enough funds (for both the commission and the asset itself).
+	if !k.coinKeeper.HasCoins(ctx, buyer, price) {
+		return nil, fmt.Errorf("user %s does not have enough funds", buyer.String())
 	}
 	logger.Info("user has enough funds, o.k.")
 
@@ -179,19 +190,23 @@ func doCommissions(
 	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
 		"price_after_commission", priceAfterCommission.String())
 
+	var initialBalances = getBalances(ctx, k, buyer, seller, buyerBeneficiary, sellerBeneficiary)
 	// Pay commission to the beneficiaries.
-	if err := k.coinKeeper.SendCoins(ctx, payer, sellerBeneficiary, beneficiaryCommission); err != nil {
+	if err := k.coinKeeper.SendCoins(ctx, buyer, sellerBeneficiary, beneficiaryCommission); err != nil {
+		rollbackCommissions(ctx, k, logger, initialBalances)
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
 	logger.Info("payed seller beneficiary commission", "seller_beneficiary", sellerBeneficiary.String())
-	if err := k.coinKeeper.SendCoins(ctx, payer, buyerBeneficiary, beneficiaryCommission); err != nil {
+	if err := k.coinKeeper.SendCoins(ctx, buyer, buyerBeneficiary, beneficiaryCommission); err != nil {
+		rollbackCommissions(ctx, k, logger, initialBalances)
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
 	logger.Info("payed buyer beneficiary commission", "buyer_beneficiary", buyerBeneficiary.String())
 
-	// First we take tokens from the payer, then we allocate tokens to validators via distribution module.
-	if _, err := k.coinKeeper.SubtractCoins(ctx, payer, totalValsCommission); err != nil {
-		return nil, fmt.Errorf("failed to take validators commission from payer: %v", err)
+	// First we take tokens from the buyer, then we allocate tokens to validators via distribution module.
+	if _, err := k.coinKeeper.SubtractCoins(ctx, buyer, totalValsCommission); err != nil {
+		rollbackCommissions(ctx, k, logger, initialBalances)
+		return nil, fmt.Errorf("failed to take validators commission from buyer: %v", err)
 	}
 	logger.Info("wrote off validators commission")
 
@@ -203,6 +218,31 @@ func doCommissions(
 	}
 
 	return priceAfterCommission, nil
+}
+
+type balance struct {
+	addr   sdk.AccAddress
+	amount sdk.Coins
+}
+
+func getBalances(ctx sdk.Context, k Keeper, addrs ...sdk.AccAddress) []*balance {
+	var out []*balance
+	for _, addr := range addrs {
+		out = append(out, &balance{
+			addr:   addr,
+			amount: k.coinKeeper.GetCoins(ctx, addr),
+		})
+	}
+
+	return out
+}
+
+func rollbackCommissions(ctx sdk.Context, k Keeper, logger log.Logger, initialBalances []*balance) {
+	for _, balance := range initialBalances {
+		if err := k.coinKeeper.SetCoins(ctx, balance.addr, balance.amount); err != nil {
+			logger.Error("failed to rollback commissions", "addr", balance.addr.String(), "error", err)
+		}
+	}
 }
 
 func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {

@@ -230,19 +230,19 @@ func TestBuySellNFT(t *testing.T) {
 		result = handler(mpKeeperTest.ctx, *buyNFTMsg)
 		require.True(t, result.IsOK())
 
-		// check a seller's balance
+		// check seller's balance
 		require.Equal(t, data.expectedSellerAmount,
 			mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, mpKeeperTest.addrs[0]).AmountOf(denom).Int64())
 
-		// check a buyer's balance
+		// check buyer's balance
 		require.Equal(t, data.expectedBuyerCoinsAmount,
 			mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, mpKeeperTest.addrs[1]).AmountOf(denom).Int64())
 
-		// check a balance of seller's beneficiary
+		// check of seller's beneficiary balance
 		require.Equal(t, data.expectedBeneficiaryCoinsAmount,
 			mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, mpKeeperTest.addrs[2]).AmountOf(denom).Int64())
 
-		// check a balance of buyer's beneficiary
+		// check buyer's beneficiary balance
 		require.Equal(t, data.expectedBeneficiaryCoinsAmount,
 			mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, mpKeeperTest.addrs[3]).AmountOf(denom).Int64())
 	}
