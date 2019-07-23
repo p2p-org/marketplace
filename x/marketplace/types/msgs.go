@@ -116,11 +116,11 @@ func (m MsgTransferNFT) GetSigners() []sdk.AccAddress {
 
 // --------------------------------------------------------------------------
 //
-// MsgSellNFT
+// MsgPutNFTOnMarket
 //
 // --------------------------------------------------------------------------
 
-type MsgSellNFT struct {
+type MsgPutNFTOnMarket struct {
 	Owner sdk.AccAddress `json:"owner"`
 	// Beneficiary is the cosmos user who gets the commission for this transaction.
 	Beneficiary sdk.AccAddress `json:"beneficiary"`
@@ -128,8 +128,8 @@ type MsgSellNFT struct {
 	Price       sdk.Coins      `json:"price"`
 }
 
-func NewMsgSellNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.Coins) *MsgSellNFT {
-	return &MsgSellNFT{
+func NewMsgPutOnMarketNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.Coins) *MsgPutNFTOnMarket {
+	return &MsgPutNFTOnMarket{
 		Owner:       owner,
 		TokenID:     tokenID,
 		Price:       price,
@@ -138,13 +138,13 @@ func NewMsgSellNFT(owner, beneficiary sdk.AccAddress, tokenID string, price sdk.
 }
 
 // Route should return the name of the module
-func (m MsgSellNFT) Route() string { return RouterKey }
+func (m MsgPutNFTOnMarket) Route() string { return RouterKey }
 
 // Type should return the action
-func (m MsgSellNFT) Type() string { return "sell_nft" }
+func (m MsgPutNFTOnMarket) Type() string { return "put_on_market_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgSellNFT) ValidateBasic() sdk.Error {
+func (m MsgPutNFTOnMarket) ValidateBasic() sdk.Error {
 	if m.Owner.Empty() {
 		return sdk.ErrInvalidAddress(m.Owner.String())
 	}
@@ -155,12 +155,12 @@ func (m MsgSellNFT) ValidateBasic() sdk.Error {
 }
 
 // GetSignBytes encodes the message for signing
-func (m MsgSellNFT) GetSignBytes() []byte {
+func (m MsgPutNFTOnMarket) GetSignBytes() []byte {
 	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
 }
 
 // GetSigners defines whose signature is required
-func (m MsgSellNFT) GetSigners() []sdk.AccAddress {
+func (m MsgPutNFTOnMarket) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
 }
 
@@ -214,6 +214,12 @@ func (m MsgBuyNFT) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Buyer}
 }
 
+// --------------------------------------------------------------------------
+//
+// MsgCreateFungibleToken
+//
+// --------------------------------------------------------------------------
+
 type MsgCreateFungibleToken struct {
 	Creator sdk.AccAddress `json:"creator"`
 	Denom   string         `json:"denom"`
@@ -252,6 +258,12 @@ func (m MsgCreateFungibleToken) GetSignBytes() []byte {
 func (m MsgCreateFungibleToken) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Creator}
 }
+
+// --------------------------------------------------------------------------
+//
+// MsgTransferFungibleTokens
+//
+// --------------------------------------------------------------------------
 
 type MsgTransferFungibleTokens struct {
 	Owner     sdk.AccAddress `json:"owner"`
@@ -294,5 +306,57 @@ func (m MsgTransferFungibleTokens) GetSignBytes() []byte {
 }
 
 func (m MsgTransferFungibleTokens) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgUpdateNFTParams
+//
+// --------------------------------------------------------------------------
+
+type NFTParam struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type MsgUpdateNFTParams struct {
+	Owner   sdk.AccAddress `json:"owner"`
+	Params  []NFTParam     `json:"params"`
+	TokenID string         `json:"token_id"`
+}
+
+func NewMsgUpdateNFTParams(owner sdk.AccAddress, id string, params []NFTParam) *MsgUpdateNFTParams {
+	return &MsgUpdateNFTParams{
+		Owner:   owner,
+		Params:  params,
+		TokenID: id,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgUpdateNFTParams) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgUpdateNFTParams) Type() string { return "put_on_market_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgUpdateNFTParams) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if m.TokenID == "" {
+		return sdk.ErrUnknownRequest(m.TokenID)
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgUpdateNFTParams) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgUpdateNFTParams) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
 }

@@ -22,12 +22,13 @@ var (
 )
 
 type (
-	MsgMintNFT     = types.MsgMintNFT
-	MsgTransferNFT = types.MsgTransferNFT
-	MsgSellNFT     = types.MsgSellNFT
-	MsgBuyNFT      = types.MsgBuyNFT
-	NFT            = types.NFT
-	FungibleToken  = types.FungibleToken
+	MsgMintNFT         = types.MsgMintNFT
+	MsgTransferNFT     = types.MsgTransferNFT
+	MsgPutNFTOnMarket  = types.MsgPutNFTOnMarket
+	MsgBuyNFT          = types.MsgBuyNFT
+	NFT                = types.NFT
+	MsgUpdateNFTParams = types.MsgUpdateNFTParams
+	FungibleToken      = types.FungibleToken
 
 	MsgCreateFungibleToken    = types.MsgCreateFungibleToken
 	MsgTransferFungibleTokens = types.MsgTransferFungibleTokens

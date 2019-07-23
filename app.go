@@ -188,6 +188,7 @@ func NewNameServiceApp(logger log.Logger, db dbm.DB) *nameServiceApp {
 
 	srvCfg := ReadSrvConfig()
 	fmt.Printf("Server Config: \n %+v \n", srvCfg)
+
 	app.nsKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
 		app.stakingKeeper,
@@ -274,6 +275,7 @@ func NewDefaultGenesisState() GenesisState {
 func (app *nameServiceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
 
+	app.nsKeeper.RegisterBasicDenoms(ctx)
 	err := app.cdc.UnmarshalJSON(req.AppStateBytes, &genesisState)
 	if err != nil {
 		panic(err)

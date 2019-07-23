@@ -3,13 +3,14 @@ package marketplace
 import (
 	"fmt"
 
-	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/cosmos/cosmos-sdk/x/distribution"
 	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
 )
 
 // Keeper maintains the link to data storage and exposes getter/setter methods for the various parts of the state machine
@@ -95,7 +96,7 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	return k.UpdateNFT(ctx, nft)
 }
 
-func (k Keeper) SellNFT(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
+func (k Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
 	nft, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
@@ -122,6 +123,20 @@ func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 	return nil
 }
 
+func (k Keeper) IsDenomExist(ctx sdk.Context, coins sdk.Coins) bool {
+	if coins.Empty() {
+		return false
+	}
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	for i := 0; i < coins.Len(); i++ {
+		if !store.Has([]byte(coins[i].Denom)) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Creates a new fungible token with given supply and denom for FungibleTokenCreationPrice
 func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, denom string, amount int64) error {
 	logger := ctx.Logger()
@@ -139,7 +154,7 @@ func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, den
 	initialBalances := getBalances(ctx, k, creator, commissionAddress)
 
 	if err := k.coinKeeper.SendCoins(ctx, creator, commissionAddress,
-		sdk.NewCoins(sdk.NewCoin("token", sdk.NewInt(FungibleTokenCreationPrice)))); err != nil {
+		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(FungibleTokenCreationPrice)))); err != nil {
 		rollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to send coins to comissionAddress")
 	}
@@ -150,6 +165,13 @@ func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, den
 	}
 	k.registerFungibleTokensCurrency(ctx, FungibleToken{Creator: creator, Denom: denom, EmissionAmount: amount})
 	return nil
+}
+
+// Should be run just once
+func (k *Keeper) RegisterBasicDenoms(ctx sdk.Context) {
+	ft := FungibleToken{Creator: []byte{}, Denom: types.DefaultTokenDenom, EmissionAmount: 1}
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	store.Set([]byte(ft.Denom), k.cdc.MustMarshalBinaryBare(ft))
 }
 
 // Registers fungible token for prevent double creation

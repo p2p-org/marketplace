@@ -47,10 +47,10 @@ To transfer a token from user1 to user2:
 mpcli tx marketplace transfer 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user1
 ```
 
-To sell a token (to make it purchasable by anybody who offers the exact price you specified):
+To put a token on market (to make it purchasable by anybody who offers the exact price you specified):
 
 ```bash
-mpcli tx marketplace sell 686769b1-9395-4821-8a9e-36008ad4ca7c 150token cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user1
+mpcli tx marketplace put_on_market 686769b1-9395-4821-8a9e-36008ad4ca7c 150token cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user1
 ```
 
 Note that you *must* provide the beneficiary address.
@@ -122,6 +122,12 @@ Password to sign with 'user1':
   "txhash": "12AAB743F568E72E22E05C040AFA9CB5450C70FF709AFBFF1B51D6A8BDED2359"
 }
 ```
+
+Change token params:
+Use 'update_params' with flags --image --price --description --token_uri --name
+```
+mpcli tx marketplace update_params 4eb281c9-1eea-4aab-b508-a3c27828b572 --from user1 -i newimage -p 500token -d newdescription -u newuri -n newname
+```
 List nfts:
 ```
 $ mpcli query marketplace nfts
@@ -150,7 +156,7 @@ $ mpcli query marketplace nfts
 Put the new token on the market (and specify `sellerBeneficiary`):
 
 ```
-$ mpcli tx marketplace sell 4eb281c9-1eea-4aab-b508-a3c27828b572 650token cosmos1497eedaprzjvydwvgj5tu9e97agw30d7ksj99r --from user1
+$ mpcli tx marketplace put_on_market 4eb281c9-1eea-4aab-b508-a3c27828b572 650token cosmos1497eedaprzjvydwvgj5tu9e97agw30d7ksj99r --from user1
 ```
 *Output:*
 ```
@@ -164,7 +170,7 @@ $ mpcli tx marketplace sell 4eb281c9-1eea-4aab-b508-a3c27828b572 650token cosmos
   },
   "msgs": [
     {
-      "type": "marketplace/SellNFT",
+      "type": "marketplace/PutOnMarketNFT",
       "value": {
         "owner": "cosmos1qv79nvxnkq7pf2tgrgjz53w9as6hlp7zszcpvr",
         "beneficiary": "cosmos1497eedaprzjvydwvgj5tu9e97agw30d7ksj99r",

@@ -7,6 +7,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -20,14 +21,16 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgMintNFT(ctx, keeper, msg)
 		case MsgTransferNFT:
 			return handleMsgTransferNFT(ctx, keeper, msg)
-		case MsgSellNFT:
-			return handleMsgSellNFT(ctx, keeper, msg)
+		case MsgPutNFTOnMarket:
+			return handleMsgPutNFTOnMarket(ctx, keeper, msg)
 		case MsgBuyNFT:
 			return handleMsgBuyNFT(ctx, keeper, msg)
 		case MsgCreateFungibleToken:
 			return handleMsgCreateFungibleTokensCurrency(ctx, keeper, msg)
 		case MsgTransferFungibleTokens:
 			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
+		case MsgUpdateNFTParams:
+			return handleMsgUpdateNFTParams(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
@@ -67,7 +70,7 @@ func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result
 			msg.Image,
 			msg.TokenURI,
 		),
-		sdk.NewCoins(sdk.NewCoin("token", sdk.NewInt(0))),
+		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(0))),
 	)
 	if err := keeper.MintNFT(ctx, nft); err != nil {
 		return sdk.Result{
@@ -91,12 +94,20 @@ func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) sdk.Res
 	return sdk.Result{}
 }
 
-func handleMsgSellNFT(ctx sdk.Context, k Keeper, msg MsgSellNFT) sdk.Result {
-	if err := k.SellNFT(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
+func handleMsgPutNFTOnMarket(ctx sdk.Context, k Keeper, msg MsgPutNFTOnMarket) sdk.Result {
+	if !k.IsDenomExist(ctx, msg.Price) {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
 			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to SellNFT: %v", err)),
+			Data:      []byte(fmt.Sprintf("failed to PutNFTOnMarket: %v", "denom does not exist")),
+		}
+
+	}
+	if err := k.PutNFTOnMarket(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to PutNFTOnMarket: %v", err)),
 		}
 	}
 
@@ -279,4 +290,63 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 	priceDec := sdk.NewDecCoins(price)
 	totalCommission, _ := priceDec.MulDec(num).QuoDec(denom).TruncateDecimal()
 	return totalCommission
+}
+
+func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams) sdk.Result {
+	nft, err := k.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)),
+		}
+	}
+	if !nft.Owner.Equals(msg.Owner) {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())),
+		}
+	}
+
+	for _, v := range msg.Params {
+		v := v
+		switch v.Key {
+		case types.FlagParamPrice:
+			price, err := sdk.ParseCoins(v.Value)
+			if err != nil {
+				return sdk.Result{
+					Code:      sdk.CodeUnknownRequest,
+					Codespace: "marketplace",
+					Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)),
+				}
+			}
+			if !k.IsDenomExist(ctx, price) {
+				return sdk.Result{
+					Code:      sdk.CodeUnknownRequest,
+					Codespace: "marketplace",
+					Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", "denom is not registered")),
+				}
+			}
+			nft.Price = price
+		case types.FlagParamDescription:
+			nft.Description = v.Value
+		case types.FlagParamTokenName:
+			nft.Name = v.Value
+		case types.FlagParamTokenURI:
+			nft.TokenURI = v.Value
+		case types.FlagParamImage:
+			nft.Image = v.Value
+		}
+	}
+
+	if err := k.UpdateNFT(ctx, nft); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams: %v", err)),
+		}
+	}
+
+	return sdk.Result{}
 }

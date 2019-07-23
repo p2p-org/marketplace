@@ -183,7 +183,7 @@ func (mp *marketplaceKeeperTest) updateVoteInfos(validatorsCount int, coins sdk.
 	return voteInfos, nil
 }
 
-type testBuySellNFTData struct {
+type testBuyPutOnMarketNFTData struct {
 	numberOfCoins   int64
 	priceOfToken    int64
 	validatorsCount int
@@ -193,14 +193,14 @@ type testBuySellNFTData struct {
 	expectedSellerAmount           int64
 }
 
-func TestBuySellNFT(t *testing.T) {
+func TestBuyPutOnMarketNFT(t *testing.T) {
 	var (
 		result sdk.Result
 	)
 
-	denom := "token"
+	denom := types.DefaultTokenDenom
 
-	testData := []testBuySellNFTData{
+	testData := []testBuyPutOnMarketNFTData{
 		{int64(1000), int64(600), 1,
 			int64(1004), int64(400), int64(1586)},
 		{int64(1000), int64(650), 1,
@@ -224,8 +224,8 @@ func TestBuySellNFT(t *testing.T) {
 		handler := marketplace.NewHandler(mpKeeperTest.marketKeeper)
 		require.Nil(t, mpKeeperTest.marketKeeper.MintNFT(mpKeeperTest.ctx, nft))
 
-		sellNFTMsg := types.NewMsgSellNFT(mpKeeperTest.addrs[0], mpKeeperTest.addrs[2], nft.GetID(), price)
-		result = handler(mpKeeperTest.ctx, *sellNFTMsg)
+		putOnMarketNFTMsg := types.NewMsgPutOnMarketNFT(mpKeeperTest.addrs[0], mpKeeperTest.addrs[2], nft.GetID(), price)
+		result = handler(mpKeeperTest.ctx, *putOnMarketNFTMsg)
 		require.True(t, result.IsOK())
 
 		buyNFTMsg := types.NewMsgBuyNFT(mpKeeperTest.addrs[1], mpKeeperTest.addrs[3], nft.GetID(), "")
@@ -257,7 +257,7 @@ type commissionTestData struct {
 }
 
 func TestCommission(t *testing.T) {
-	denom := "token"
+	denom := types.DefaultTokenDenom
 
 	testData := []commissionTestData{
 		{100, 1, 0.01},
@@ -285,7 +285,7 @@ func createNFT(owner sdk.AccAddress) *types.NFT {
 			"",
 			"",
 		),
-		sdk.NewCoins(sdk.NewCoin("token", sdk.NewInt(0))),
+		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(0))),
 	)
 	return nft
 }

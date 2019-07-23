@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
@@ -25,12 +26,14 @@ type NFT struct {
 	Price             sdk.Coins      `json:"price"`
 	OnSale            bool           `json:"on_sale"`
 	SellerBeneficiary sdk.AccAddress `json:"seller_beneficiary"`
+	TimeCreated       time.Time      `json:"time_created"`
 }
 
 func NewNFT(nft xnft.BaseNFT, price sdk.Coins) *NFT {
 	return &NFT{
-		BaseNFT: nft,
-		Price:   price,
+		BaseNFT:     nft,
+		Price:       price,
+		TimeCreated: time.Now().UTC(),
 	}
 }
 
@@ -59,4 +62,8 @@ func (m *NFT) SetOnSale(status bool) {
 
 func (m *NFT) SetSellerBeneficiary(addr sdk.AccAddress) {
 	m.SellerBeneficiary = addr
+}
+
+func (m *NFT) GetTimeCreated() time.Time {
+	return m.TimeCreated
 }

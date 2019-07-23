@@ -1,11 +1,12 @@
 package marketplace_test
 
 import (
+	"testing"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type createAndTransferFT struct {
@@ -28,9 +29,9 @@ func TestCreateAndTransferFT(t *testing.T) {
 
 	// TODO: fix expectedCreatorBalanceAfterCreation
 	testData := []createAndTransferFT{
-		{1000, "token", "test", 1000, 500,
+		{1000, types.DefaultTokenDenom, "test", 1000, 500,
 			990, 500, 500},
-		{1000, "token", "tester", 1000, 350,
+		{1000, types.DefaultTokenDenom, "tester", 1000, 350,
 			990, 650, 350},
 	}
 

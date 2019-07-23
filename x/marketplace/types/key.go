@@ -16,8 +16,21 @@ const (
 	FlagBeneficiaryCommission      = "beneficiary-commission"
 	FlagBeneficiaryCommissionShort = "c"
 
+	FlagParamTokenName        = "name"
+	FlagParamTokenNameShort   = "n"
+	FlagParamDescription      = "description"
+	FlagParamDescriptionShort = "d"
+	FlagParamImage            = "image"
+	FlagParamImageShort       = "i"
+	FlagParamTokenURI         = "token_uri"
+	FlagParamTokenURIShort    = "u"
+	FlagParamPrice            = "price"
+	FlagParamPriceShort       = "p"
+
 	DefaultMaximumBeneficiaryCommission = 0.05
 	DefaultBeneficiariesCommission      = 0.015
 	DefaultValidatorsCommission         = 0.01
+
+	DefaultTokenDenom = "token"
 )
 
