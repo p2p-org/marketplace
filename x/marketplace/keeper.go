@@ -91,7 +91,7 @@ func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.Ac
 	if !nft.GetOwner().Equals(sender) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", sender.String(), id)
 	}
-	nft.SetOwner(recipient)
+	nft.BaseNFT = nft.SetOwner(recipient)
 
 	return k.UpdateNFT(ctx, nft)
 }
