@@ -227,22 +227,22 @@ func doNFTCommissions(
 	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
 		"price_after_commission", priceAfterCommission.String())
 
-	var initialBalances = getBalances(ctx, k, buyer, seller, buyerBeneficiary, sellerBeneficiary)
+	var initialBalances = GetBalances(ctx, k, buyer, seller, buyerBeneficiary, sellerBeneficiary)
 	// Pay commission to the beneficiaries.
 	if err := k.coinKeeper.SendCoins(ctx, buyer, sellerBeneficiary, beneficiaryCommission); err != nil {
-		rollbackCommissions(ctx, k, logger, initialBalances)
+		RollbackCommissions(ctx, k, logger, initialBalances)
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
 	logger.Info("payed seller beneficiary commission", "seller_beneficiary", sellerBeneficiary.String())
 	if err := k.coinKeeper.SendCoins(ctx, buyer, buyerBeneficiary, beneficiaryCommission); err != nil {
-		rollbackCommissions(ctx, k, logger, initialBalances)
+		RollbackCommissions(ctx, k, logger, initialBalances)
 		return nil, fmt.Errorf("failed to pay commission to beneficiary: %v", err)
 	}
 	logger.Info("payed buyer beneficiary commission", "buyer_beneficiary", buyerBeneficiary.String())
 
 	// First we take tokens from the buyer, then we allocate tokens to validators via distribution module.
 	if _, err := k.coinKeeper.SubtractCoins(ctx, buyer, totalValsCommission); err != nil {
-		rollbackCommissions(ctx, k, logger, initialBalances)
+		RollbackCommissions(ctx, k, logger, initialBalances)
 		return nil, fmt.Errorf("failed to take validators commission from buyer: %v", err)
 	}
 	logger.Info("wrote off validators commission")
@@ -262,7 +262,7 @@ type balance struct {
 	amount sdk.Coins
 }
 
-func getBalances(ctx sdk.Context, k Keeper, addrs ...sdk.AccAddress) []*balance {
+func GetBalances(ctx sdk.Context, k Keeper, addrs ...sdk.AccAddress) []*balance {
 	var out []*balance
 	for _, addr := range addrs {
 		out = append(out, &balance{
@@ -274,7 +274,7 @@ func getBalances(ctx sdk.Context, k Keeper, addrs ...sdk.AccAddress) []*balance 
 	return out
 }
 
-func rollbackCommissions(ctx sdk.Context, k Keeper, logger log.Logger, initialBalances []*balance) {
+func RollbackCommissions(ctx sdk.Context, k Keeper, logger log.Logger, initialBalances []*balance) {
 	for _, balance := range initialBalances {
 		if err := k.coinKeeper.SetCoins(ctx, balance.addr, balance.amount); err != nil {
 			logger.Error("failed to rollback commissions", "addr", balance.addr.String(), "error", err)

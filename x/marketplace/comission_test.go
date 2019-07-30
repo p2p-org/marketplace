@@ -145,7 +145,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, cdc, config.DefaultMPServerConfig())
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
-
+	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)
 	return mpKeeperTest, nil
 }
 

@@ -151,16 +151,16 @@ func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, den
 		return fmt.Errorf("failed to get comissionAddress: %v", err)
 	}
 
-	initialBalances := getBalances(ctx, k, creator, commissionAddress)
+	initialBalances := GetBalances(ctx, k, creator, commissionAddress)
 
 	if err := k.coinKeeper.SendCoins(ctx, creator, commissionAddress,
 		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(FungibleTokenCreationPrice)))); err != nil {
-		rollbackCommissions(ctx, k, logger, initialBalances)
+		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to send coins to comissionAddress")
 	}
 
 	if _, err := k.coinKeeper.AddCoins(ctx, creator, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))); err != nil {
-		rollbackCommissions(ctx, k, logger, initialBalances)
+		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to add coins: %v", err)
 	}
 	k.registerFungibleTokensCurrency(ctx, FungibleToken{Creator: creator, Denom: denom, EmissionAmount: amount})
