@@ -27,6 +27,9 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 	r.HandleFunc(fmt.Sprintf("/%s/nfts", storeName), nftsHandler(cliCtx, storeName)).Methods("GET")
 	r.HandleFunc(fmt.Sprintf("/%s/nfts/{%s}", storeName, restName), nftHandler(cliCtx, storeName)).Methods("GET")
 
+	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens", storeName), fungibleTokensHandler(cliCtx, storeName)).Methods("GET")
+	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens/{%s}", storeName, restName), fungibleTokenHandler(cliCtx, storeName)).Methods("GET")
+
 	r.HandleFunc(fmt.Sprintf("/%s/mint", storeName), mintHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/transfer", storeName), transferHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/put_on_market", storeName), putOnMarketHandler(cliCtx)).Methods("PUT")
@@ -482,6 +485,30 @@ func nftHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
 			return
 		}
 
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func fungibleTokensHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/fungible_tokens", storeName), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
+			return
+		}
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func fungibleTokenHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		ftName := vars[restName]
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/fungible_token/%s", storeName, ftName), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
+			return
+		}
 		rest.PostProcessResponse(w, cliCtx, res)
 	}
 }

@@ -26,4 +26,9 @@ curl -XPUT -s http://localhost:1317/marketplace/create_ft --data-binary '{"base_
 
 curl -XPUT -s http://localhost:1317/marketplace/transfer_ft --data-binary '{"base_req":{"from":"'$(mpcli keys show user1 -a)'","chain_id":"mpchain","sequence":"2","account_number":"0"},"denom":"pigs","amount":"10","name":"user1","password":"12345678","recipient":"'$(mpcli keys show user2 -a)'"}'
 
+##
+
+curl -s http://localhost:1317/marketplace/fungible_tokens
+
+curl -s http://localhost:1317/marketplace/fungible_tokens/token
 

@@ -171,13 +171,13 @@ func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, den
 func (k *Keeper) RegisterBasicDenoms(ctx sdk.Context) {
 	ft := FungibleToken{Creator: []byte{}, Denom: types.DefaultTokenDenom, EmissionAmount: 1}
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
-	store.Set([]byte(ft.Denom), k.cdc.MustMarshalBinaryBare(ft))
+	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
 
 // Registers fungible token for prevent double creation
 func (k Keeper) registerFungibleTokensCurrency(ctx sdk.Context, ft FungibleToken) {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
-	store.Set([]byte(ft.Denom), k.cdc.MustMarshalBinaryBare(ft))
+	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
 
 // Transfers amount of fungible tokens from one account to another
@@ -191,4 +191,23 @@ func (k Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipient
 		return fmt.Errorf("failed to transfer tokens")
 	}
 	return nil
+}
+
+func (k Keeper) GetFungibleToken(ctx sdk.Context, name string) (*FungibleToken, error) {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	if !store.Has([]byte(name)) {
+		return nil, fmt.Errorf("could not find Fungible Token with name %s", name)
+	}
+
+	bz := store.Get([]byte(name))
+	var ft FungibleToken
+	k.cdc.MustUnmarshalJSON(bz, &ft)
+
+	return &ft, nil
+}
+
+// Get an iterator over all Fungible Tokens
+func (k Keeper) GetFungibleTokensIterator(ctx sdk.Context) sdk.Iterator {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	return sdk.KVStorePrefixIterator(store, nil)
 }

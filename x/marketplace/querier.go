@@ -10,8 +10,10 @@ import (
 
 // query endpoints supported by the marketplace Querier
 const (
-	QueryNFT  = "nft"
-	QueryNFTs = "nfts"
+	QueryNFT            = "nft"
+	QueryNFTs           = "nfts"
+	QueryFungibleToken  = "fungible_token"
+	QueryFungibleTokens = "fungible_tokens"
 )
 
 // NewQuerier is the module level router for state queries
@@ -22,6 +24,10 @@ func NewQuerier(keeper Keeper) sdk.Querier {
 			return queryNFT(ctx, path[1:], req, keeper)
 		case QueryNFTs:
 			return queryNFTs(ctx, req, keeper)
+		case QueryFungibleToken:
+			return queryFungibleToken(ctx, path[1:], req, keeper)
+		case QueryFungibleTokens:
+			return queryFungibleTokens(ctx, req, keeper)
 		default:
 			return nil, sdk.ErrUnknownRequest("unknown marketplace query endpoint")
 		}
@@ -45,6 +51,7 @@ func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, s
 		nfts     types.QueryResNFTs
 		iterator = keeper.GetNFTsIterator(ctx)
 	)
+	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
 		var nft types.NFT
 		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &nft)
@@ -52,4 +59,29 @@ func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, s
 	}
 
 	return keeper.cdc.MustMarshalJSON(nfts), nil
+}
+
+func queryFungibleToken(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	name := path[0]
+	value, err := keeper.GetFungibleToken(ctx, name)
+	if err != nil {
+		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find Fungible Token with name %s: %v", name, err))
+	}
+
+	bz := keeper.cdc.MustMarshalJSON(value)
+	return bz, nil
+}
+
+func queryFungibleTokens(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	var fts types.QueryResFungibleTokens
+	iterator := keeper.GetFungibleTokensIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var ft types.FungibleToken
+		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &ft)
+		fts.FungibleTokens = append(fts.FungibleTokens, &ft)
+	}
+
+	return keeper.cdc.MustMarshalJSON(fts), nil
 }

@@ -14,3 +14,16 @@ func (r QueryResNFTs) String() string {
 
 	return strings.Join(out, "\n")
 }
+
+type QueryResFungibleTokens struct {
+	FungibleTokens []*FungibleToken `json:"fungible_tokens"`
+}
+
+func (r QueryResFungibleTokens) String() string {
+	var out []string
+	for _, ft := range r.FungibleTokens {
+		out = append(out, ft.String())
+	}
+
+	return strings.Join(out, "\n")
+}

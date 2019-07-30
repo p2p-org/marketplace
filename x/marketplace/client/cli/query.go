@@ -21,6 +21,8 @@ func GetQueryCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	marketplaceQueryCmd.AddCommand(client.GetCommands(
 		GetCmdNFT(storeKey, cdc),
 		GetCmdNFTs(storeKey, cdc),
+		GetCmdFungibleToken(storeKey, cdc),
+		GetCmdFungibleTokens(storeKey, cdc),
 	)...)
 	return marketplaceQueryCmd
 }
@@ -48,11 +50,11 @@ func GetCmdNFT(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 }
 
-// GetCmdNFTs queries a list of all names
+// GetCmdNFTs queries a list of all NFTs
 func GetCmdNFTs(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
 		Use:   "nfts",
-		Short: "names",
+		Short: "get NFTs list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
@@ -63,6 +65,50 @@ func GetCmdNFTs(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			}
 
 			var out types.QueryResNFTs
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
+		},
+	}
+}
+
+// GetCmdNFT queries information about an NFT.
+func GetCmdFungibleToken(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "fungible_token [name]",
+		Short: "get FungibleToken by name",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			name := args[0]
+
+			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/fungible_token/%s", queryRoute, name), nil)
+			if err != nil {
+				fmt.Printf("could not resolve name - %s \n", name)
+				return nil
+			}
+
+			var out types.FungibleToken
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
+		},
+	}
+}
+
+// GetCmdFungibleTokens queries a list of all fungible tokens
+func GetCmdFungibleTokens(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "fungible_tokens",
+		Short: "get Fungible Tokens list",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/fungible_tokens", queryRoute), nil)
+			if err != nil {
+				fmt.Printf("could not get query names\n")
+				return nil
+			}
+
+			var out types.QueryResFungibleTokens
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
 		},
