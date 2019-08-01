@@ -32,5 +32,12 @@ const (
 	DefaultValidatorsCommission         = 0.01
 
 	DefaultTokenDenom = "token"
-)
 
+	MaxTokenIDLength     = 36
+	MaxNameLength        = 50
+	MaxDescriptionLength = 32000
+	MaxImageLength       = 32000
+	MaxTokenURILength    = 32000
+	MaxDenomLength       = 16
+	MinDenomLength       = 3
+)

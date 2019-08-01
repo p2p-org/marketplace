@@ -51,6 +51,24 @@ func (m MsgMintNFT) ValidateBasic() sdk.Error {
 	if len(m.Name) == 0 || len(m.Description) == 0 {
 		return sdk.ErrUnknownRequest("Name and/or Description cannot be empty")
 	}
+	if len(m.Name) > MaxNameLength {
+		return sdk.ErrUnknownRequest("Name has invalid format")
+	}
+	if len(m.Description) > MaxDescriptionLength {
+		return sdk.ErrUnknownRequest("Description has invalid format")
+	}
+	if len(m.TokenURI) > MaxTokenURILength {
+		return sdk.ErrUnknownRequest("TokenURI has invalid format")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	if len(m.Image) > MaxImageLength {
+		return sdk.ErrUnknownRequest("Image has invalid format")
+	}
+	if !isTokenURIValid(m.TokenURI) {
+		return sdk.ErrUnknownRequest("TokenURI has invalid format")
+	}
 	return nil
 }
 
@@ -151,6 +169,12 @@ func (m MsgPutNFTOnMarket) ValidateBasic() sdk.Error {
 	if len(m.TokenID) == 0 {
 		return sdk.ErrUnknownRequest("TokenID cannot be empty")
 	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	if m.Price.IsZero() || m.Price.IsAnyNegative() {
+		return sdk.ErrUnknownRequest("Price cannot be zero or negative")
+	}
 	return nil
 }
 
@@ -242,7 +266,7 @@ func (m MsgCreateFungibleToken) ValidateBasic() sdk.Error {
 	if m.Creator.Empty() {
 		return sdk.ErrInvalidAddress(m.Creator.String())
 	}
-	if len(m.Denom) < 3 || len(m.Denom) > 16 {
+	if len(m.Denom) < MinDenomLength || len(m.Denom) > MaxDenomLength {
 		return sdk.ErrUnknownRequest("denom is not valid")
 	}
 	if m.Amount <= 0 {
@@ -292,7 +316,7 @@ func (m MsgTransferFungibleTokens) ValidateBasic() sdk.Error {
 	if m.Recipient.Empty() {
 		return sdk.ErrInvalidAddress(m.Recipient.String())
 	}
-	if len(m.Denom) < 3 || len(m.Denom) > 16 {
+	if len(m.Denom) < MinDenomLength || len(m.Denom) > MaxDenomLength {
 		return sdk.ErrUnknownRequest("denom is not valid")
 	}
 	if m.Amount <= 0 {
@@ -359,4 +383,8 @@ func (m MsgUpdateNFTParams) GetSignBytes() []byte {
 // GetSigners defines whose signature is required
 func (m MsgUpdateNFTParams) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
+}
+
+func isTokenURIValid(tokenURI string) bool {
+	return true
 }
