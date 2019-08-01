@@ -168,7 +168,7 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		return sdk.ErrInsufficientCoins("Buyer does not have enough coins").Result()
 	}
 
-	nft.SetOwner(msg.Buyer)
+	nft.BaseNFT = nft.SetOwner(msg.Buyer)
 	nft.SetOnSale(false)
 
 	if err := k.UpdateNFT(ctx, nft); err != nil {
