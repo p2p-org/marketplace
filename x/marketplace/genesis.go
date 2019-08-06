@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -16,7 +17,32 @@ func NewGenesisState(nftRecords []*NFT) GenesisState {
 }
 
 func ValidateGenesis(data GenesisState) error {
-	// TODO: validate genesis.
+	for _, cur := range data.RegisteredCurrencies {
+		if cur.Creator == nil {
+			return fmt.Errorf("invalid FungibleToken: Denom: %s. Error: Missing Creator", cur.Denom)
+		}
+		if cur.Denom == "" {
+			return fmt.Errorf("invalid FungibleToken: Creator: %v. Error: Missing Denom", cur.Creator)
+		}
+	}
+	for _, record := range data.NFTRecords {
+		if record.Owner == nil {
+			return fmt.Errorf("invalid NFTRecord: Name: %v. Error: Missing Owner", record.Name)
+		}
+		if record.BaseNFT.Owner == nil {
+			return fmt.Errorf("invalid NFTRecord: Name: %v. Error: Missing BaseNFT.Owner", record.Name)
+		}
+		if record.ID == "" {
+			return fmt.Errorf("invalid NFTRecord: Name: %v. Error: Missing ID", record.Name)
+		}
+		if record.Name == "" {
+			return fmt.Errorf("invalid NFTRecord: ID: %v. Error: Missing Name", record.ID)
+		}
+		if record.TimeCreated.IsZero() {
+			return fmt.Errorf("invalid NFTRecord: Name: %v. Error: Missing TimeCreated", record.Name)
+		}
+	}
+
 	return nil
 }
 

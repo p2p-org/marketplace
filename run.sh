@@ -20,11 +20,13 @@ mpcli keys add user1 <<< "12345678"
 mpcli keys add user2 <<< "12345678"
 mpcli keys add sellerBeneficiary <<< "12345678"
 mpcli keys add buyerBeneficiary <<< "12345678"
+mpcli keys add dgaming <<< "12345678"
 
 mpd add-genesis-account $(mpcli keys show user1 -a) 1000token,100000000stake
 mpd add-genesis-account $(mpcli keys show user2 -a) 1000token,100000000stake
 mpd add-genesis-account $(mpcli keys show sellerBeneficiary -a) 1000token,100000000stake
 mpd add-genesis-account $(mpcli keys show buyerBeneficiary -a) 1000token,100000000stake
+mpd add-genesis-account $(mpcli keys show dgaming -a) 1000token,100000000stake
 
 echo "Configuring..."
 mpcli config chain-id mpchain

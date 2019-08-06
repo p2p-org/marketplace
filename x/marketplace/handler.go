@@ -2,7 +2,6 @@ package marketplace
 
 import (
 	"fmt"
-	"math/big"
 	"strconv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -284,11 +283,43 @@ func RollbackCommissions(ctx sdk.Context, k Keeper, logger log.Logger, initialBa
 	}
 }
 
+func calculateNumAndDenom(p float64) (sdk.Dec, sdk.Dec) {
+	if p == 0 {
+		return sdk.NewDec(0), sdk.NewDec(1)
+	}
+	/*
+		//	Considering a float64 less than 1.0 (e.g. 0.0015)
+		//	as a quotient (fraction) of two numbers p/q
+		//	(p (numerator) divided by q (denominator)), where
+		//	p is an integer number (e.g. 15) and
+		//	q is an integer number, which is product of 10 (e.g. 10000),
+		//	we can express input float64 value of commission
+		//	this way (as p/q)
+		//	This is supposed to simplify commission calculation
+	*/
+	//	init q
+	q := int64(1)
+	//	for loop till the precision limit
+	for i := 0; i < sdk.Precision; i++ {
+		//	multiply input float number
+		p *= 10
+		//	multiply q as well
+		q *= 10
+		//	check if input number became integer
+		//	this if faster than
+		//	math.Trunc(p) == p
+		if float64(int64(p)) == p {
+			break
+		}
+	}
+	return sdk.NewDec(int64(p)), sdk.NewDec(q)
+}
+
 func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
-	// TODO: maybe we can do it somehow easier.
-	var rat = new(big.Rat)
-	rat = rat.SetFloat64(rat64)
-	num, denom := sdk.NewDecFromBigInt(rat.Num()), sdk.NewDecFromBigInt(rat.Denom())
+	if rat64 >= 1 {
+		return price
+	}
+	num, denom := calculateNumAndDenom(rat64)
 	priceDec := sdk.NewDecCoins(price)
 	totalCommission, _ := priceDec.MulDec(num).QuoDec(denom).TruncateDecimal()
 	return totalCommission
