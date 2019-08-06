@@ -211,3 +211,16 @@ func (k Keeper) GetFungibleTokensIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	return sdk.KVStorePrefixIterator(store, nil)
 }
+
+func (k Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddress, denom string, amount int64) error {
+	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	if !store.Has([]byte(denom)) {
+		return fmt.Errorf("unknown currency")
+	}
+
+	_, err := k.coinKeeper.SubtractCoins(ctx, currencyOwner, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount))))
+	if err != nil {
+		return fmt.Errorf("failed to burn fungible tokens")
+	}
+	return nil
+}

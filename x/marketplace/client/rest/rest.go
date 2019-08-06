@@ -37,6 +37,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 	r.HandleFunc(fmt.Sprintf("/%s/update_params", storeName), updateParamsHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/create_ft", storeName), createFTHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/transfer_ft", storeName), transferFTHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/burn_ft", storeName), burnFTHandler(cliCtx)).Methods("PUT")
 }
 
 // --------------------------------------------------------------------------------------
@@ -407,7 +408,7 @@ func createFTHandler(cliCtx context.CLIContext) http.HandlerFunc {
 }
 
 // --------------------------------------------------------------------------------------
-// Create FT
+// Transfer FT
 
 type TransferFTReq struct {
 	BaseReq rest.BaseReq `json:"base_req"`
@@ -449,6 +450,51 @@ func transferFTHandler(cliCtx context.CLIContext) http.HandlerFunc {
 
 		// create the message
 		msg := types.NewMsgTransferFungibleTokens(owner, recipient, req.Denom, req.Amount)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+// Burn FT
+
+type BurnFTReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	Denom  string `json:"denom"`
+	Amount int64  `json:"amount"`
+}
+
+func burnFTHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req BurnFTReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		// create the message
+		msg := types.NewMsgBurnFungibleTokens(owner, req.Denom, req.Amount)
 		err = msg.ValidateBasic()
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())

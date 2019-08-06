@@ -34,6 +34,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdCreateFungibleToken(cdc),
 		GetCmdTransferFungibleTokens(cdc),
 		GetCmdUpdateNFTParams(cdc),
+		GetCmdBurnFungibleTokens(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -238,4 +239,28 @@ func GetCmdUpdateNFTParams(cdc *codec.Codec) *cobra.Command {
 	cmd.Flags().StringP(mptypes.FlagParamTokenURI, mptypes.FlagParamTokenURIShort, "", "new nft uri, if left blank will not be changed")
 	cmd.Flags().StringP(mptypes.FlagParamDescription, mptypes.FlagParamDescriptionShort, "", "new nft description, if left blank will not be changed")
 	return cmd
+}
+
+func GetCmdBurnFungibleTokens(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "burnFT [denom] [amount]",
+		Short: "burn some amount of owned fungible tokens",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			amount, err := strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("failed to parse amount: %v", err)
+			}
+
+			msg := types.NewMsgBurnFungibleTokens(cliCtx.GetFromAddress(), args[0], int64(amount))
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
 }

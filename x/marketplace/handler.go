@@ -31,6 +31,8 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
 		case MsgUpdateNFTParams:
 			return handleMsgUpdateNFTParams(ctx, keeper, msg)
+		case MsgBurnFungibleToken:
+			return handleMsgBurnFT(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
@@ -348,5 +350,16 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams)
 		}
 	}
 
+	return sdk.Result{}
+}
+
+func handleMsgBurnFT(ctx sdk.Context, k Keeper, msg MsgBurnFungibleToken) sdk.Result {
+	if err := k.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to burn coins: %v", err)),
+		}
+	}
 	return sdk.Result{}
 }

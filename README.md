@@ -489,6 +489,25 @@ curl -XPUT -s http://localhost:1317/marketplace/create_ft --data-binary
 }'
 ```
 
+Burn fungible token:
+
+```bash
+curl -XPUT -s http://localhost:1317/marketplace/burn_ft --data-binary 
+'{  
+     "base_req":{  
+         "from":"'$(mpcli keys show user1 -a)'",
+         "chain_id":"mpchain",
+         "sequence":"2",
+         "account_number":"0"
+     },
+     "denom":"pigs",
+     "amount":"15",
+     "name":"user1",
+     "password":"12345678"
+}'
+
+```
+
 Transfer fungible token:
 
 ```bash
@@ -497,7 +516,7 @@ curl -XPUT -s http://localhost:1317/marketplace/transfer_ft --data-binary
      "base_req":{  
          "from":"'$(mpcli keys show user1 -a)'",
          "chain_id":"mpchain",
-         "sequence":"2",
+         "sequence":"3",
          "account_number":"0"
      },
      "denom":"pigs",

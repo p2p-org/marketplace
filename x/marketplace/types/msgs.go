@@ -362,7 +362,7 @@ func NewMsgUpdateNFTParams(owner sdk.AccAddress, id string, params []NFTParam) *
 func (m MsgUpdateNFTParams) Route() string { return RouterKey }
 
 // Type should return the action
-func (m MsgUpdateNFTParams) Type() string { return "put_on_market_nft" }
+func (m MsgUpdateNFTParams) Type() string { return "update_nft_params" }
 
 // ValidateBasic runs stateless checks on the message
 func (m MsgUpdateNFTParams) ValidateBasic() sdk.Error {
@@ -382,6 +382,51 @@ func (m MsgUpdateNFTParams) GetSignBytes() []byte {
 
 // GetSigners defines whose signature is required
 func (m MsgUpdateNFTParams) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBurnFungibleTokens
+//
+// --------------------------------------------------------------------------
+
+type MsgBurnFungibleTokens struct {
+	Owner  sdk.AccAddress `json:"owner"`
+	Denom  string         `json:"denom"`
+	Amount int64          `json:"amount"`
+}
+
+func NewMsgBurnFungibleTokens(owner sdk.AccAddress, denom string, amount int64) *MsgBurnFungibleTokens {
+	return &MsgBurnFungibleTokens{
+		Owner:  owner,
+		Denom:  denom,
+		Amount: amount,
+	}
+}
+
+func (m MsgBurnFungibleTokens) Route() string { return RouterKey }
+
+func (m MsgBurnFungibleTokens) Type() string { return "burn_coins" }
+
+func (m MsgBurnFungibleTokens) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.Denom) < 3 || len(m.Denom) > 16 {
+		return sdk.ErrUnknownRequest("denom is not valid")
+	}
+	if m.Amount <= 0 {
+		return sdk.ErrUnknownRequest("amount is invalid")
+	}
+	return nil
+}
+
+func (m MsgBurnFungibleTokens) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+func (m MsgBurnFungibleTokens) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
 }
 

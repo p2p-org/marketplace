@@ -21,4 +21,5 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgTransferFungibleTokens{}, "marketplace/TransferFungibleTokens", nil)
 	cdc.RegisterConcrete(FungibleToken{}, "marketplace/FungibleToken", nil)
 	cdc.RegisterConcrete(MsgUpdateNFTParams{}, "marketplace/UpdateNFTParams", nil)
+	cdc.RegisterConcrete(MsgBurnFungibleTokens{}, "marketplace/BurnFungibleTokens", nil)
 }
