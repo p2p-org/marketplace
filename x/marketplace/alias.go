@@ -5,10 +5,11 @@ import (
 )
 
 const (
-	ModuleName = types.ModuleName
-	RouterKey  = types.RouterKey
-	StoreKey   = types.StoreKey
-
+	ModuleName                 = types.ModuleName
+	RouterKey                  = types.RouterKey
+	StoreKey                   = types.StoreKey
+	RegisterCurrencyKey        = types.RegisterCurrency
+	AuctionKey                 = types.AuctionKey
 	FungibleTokenCreationPrice = types.FungibleTokenCreationPrice
 	FungibleCommissionAddress  = types.FungibleCommissionAddress
 
@@ -22,13 +23,20 @@ var (
 )
 
 type (
-	MsgMintNFT         = types.MsgMintNFT
-	MsgTransferNFT     = types.MsgTransferNFT
-	MsgPutNFTOnMarket  = types.MsgPutNFTOnMarket
-	MsgBuyNFT          = types.MsgBuyNFT
-	NFT                = types.NFT
-	MsgUpdateNFTParams = types.MsgUpdateNFTParams
-	FungibleToken      = types.FungibleToken
+	MsgMintNFT             = types.MsgMintNFT
+	MsgTransferNFT         = types.MsgTransferNFT
+	MsgPutNFTOnMarket      = types.MsgPutNFTOnMarket
+	MsgRemoveNFTFromMarket = types.MsgRemoveNFTFromMarket
+	MsgBuyNFT              = types.MsgBuyNFT
+	NFT                    = types.NFT
+	MsgUpdateNFTParams     = types.MsgUpdateNFTParams
+	FungibleToken          = types.FungibleToken
+
+	MsgPutNFTOnAuction      = types.MsgPutNFTOnAuction
+	MsgRemoveNFTFromAuction = types.MsgRemoveNFTFromAuction
+	MsgMakeBidOnAuction     = types.MsgMakeBidOnAuction
+	MsgFinishAuction        = types.MsgFinishAuction
+	MsgBuyoutOnAuction      = types.MsgBuyoutOnAuction
 
 	MsgCreateFungibleToken    = types.MsgCreateFungibleToken
 	MsgTransferFungibleTokens = types.MsgTransferFungibleTokens

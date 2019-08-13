@@ -1,11 +1,66 @@
 package types
 
+import (
+	"fmt"
+)
+
+type NFTStatus int8
+
+func (s NFTStatus) String() string {
+	switch s {
+	case NFTStatusDefault:
+		return "default"
+	case NFTStatusOnMarket:
+		return "on_market"
+	case NFTStatusOnAuction:
+		return "on_auction"
+	case NFTStatusUndefined:
+		return "undefined"
+	}
+	return "undefined"
+}
+
+func (s NFTStatus) MarshalJSON() ([]byte, error) {
+	r := fmt.Sprintf("\"%v\"", s)
+	return []byte(r), nil
+}
+
+func (s *NFTStatus) UnmarshalJSON(b []byte) error {
+	var t string
+	t = string(b)
+	var e NFTStatus
+	switch t {
+	case "\"default\"":
+		e = NFTStatus(0)
+	case "\"on_market\"":
+		e = NFTStatus(1)
+	case "\"on_auction\"":
+		e = NFTStatus(2)
+	case "\"undefined\"":
+		e = NFTStatus(3)
+	default:
+		e = NFTStatus(0)
+	}
+
+	*s = e
+	return nil
+}
+
+const (
+	NFTStatusDefault NFTStatus = iota
+	NFTStatusOnMarket
+	NFTStatusOnAuction
+	NFTStatusUndefined
+)
+
 const (
 	// module name
 	ModuleName = "marketplace"
 
 	// StoreKey to be used when creating the KVStore
-	StoreKey = ModuleName
+	StoreKey         = ModuleName
+	RegisterCurrency = "register_currency"
+	AuctionKey       = "auction"
 
 	FungibleTokenCreationPrice = 10 // TODO: price or commission
 	FungibleCommissionAddress  = "" // TODO: create account for commissions
@@ -26,6 +81,9 @@ const (
 	FlagParamTokenURIShort    = "u"
 	FlagParamPrice            = "price"
 	FlagParamPriceShort       = "p"
+
+	FlagParamBuyoutPrice      = "buyout"
+	FlagParamBuyoutPriceShort = "u"
 
 	DefaultMaximumBeneficiaryCommission = 0.05
 	DefaultBeneficiariesCommission      = 0.015

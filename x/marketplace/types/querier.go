@@ -27,3 +27,16 @@ func (r QueryResFungibleTokens) String() string {
 
 	return strings.Join(out, "\n")
 }
+
+type QueryResAuctionLots struct {
+	AuctionLots []*AuctionLot `json:"auction_lots"`
+}
+
+func (r QueryResAuctionLots) String() string {
+	var out []string
+	for _, lot := range r.AuctionLots {
+		out = append(out, lot.String())
+	}
+
+	return strings.Join(out, "\n")
+}

@@ -8,7 +8,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
-	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -23,6 +22,8 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgTransferNFT(ctx, keeper, msg)
 		case MsgPutNFTOnMarket:
 			return handleMsgPutNFTOnMarket(ctx, keeper, msg)
+		case MsgRemoveNFTFromMarket:
+			return handleMsgRemoveNFTFromMarket(ctx, keeper, msg)
 		case MsgBuyNFT:
 			return handleMsgBuyNFT(ctx, keeper, msg)
 		case MsgCreateFungibleToken:
@@ -31,6 +32,16 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
 		case MsgUpdateNFTParams:
 			return handleMsgUpdateNFTParams(ctx, keeper, msg)
+		case MsgPutNFTOnAuction:
+			return handleMsgPutNFTOnAuction(ctx, keeper, msg)
+		case MsgRemoveNFTFromAuction:
+			return handleMsgRemoveNFTFromAuction(ctx, keeper, msg)
+		case MsgMakeBidOnAuction:
+			return handleMsgMakeBidOnAuction(ctx, keeper, msg)
+		case MsgFinishAuction:
+			return handleMsgFinishAuction(ctx, keeper, msg)
+		case MsgBuyoutOnAuction:
+			return handleMsgBuyoutOnAuction(ctx, keeper, msg)
 		case MsgBurnFungibleToken:
 			return handleMsgBurnFT(ctx, keeper, msg)
 		default:
@@ -124,6 +135,18 @@ func handleMsgPutNFTOnMarket(ctx sdk.Context, k Keeper, msg MsgPutNFTOnMarket) s
 	return sdk.Result{}
 }
 
+func handleMsgRemoveNFTFromMarket(ctx sdk.Context, k Keeper, msg MsgRemoveNFTFromMarket) sdk.Result {
+	if err := k.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Owner); err != nil {
+		return sdk.Result{
+			Code:      sdk.CodeUnknownRequest,
+			Codespace: "marketplace",
+			Data:      []byte(fmt.Sprintf("failed to RemoveNFTFromMarket: %v", err)),
+		}
+	}
+
+	return sdk.Result{}
+}
+
 func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyNFT)
 	nft, err := k.GetNFT(ctx, msg.TokenID)
@@ -135,7 +158,7 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	if !nft.IsOnSale() {
+	if !nft.IsOnMarket() {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
 			Codespace: "marketplace",
@@ -143,7 +166,7 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 		}
 	}
 
-	beneficiariesCommission := mptypes.DefaultBeneficiariesCommission
+	beneficiariesCommission := types.DefaultBeneficiariesCommission
 	parsed, err := strconv.ParseFloat(msg.BeneficiaryCommission, 64)
 	if err == nil {
 		beneficiariesCommission = parsed
@@ -180,7 +203,8 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 	}
 
 	nft.BaseNFT = nft.SetOwner(msg.Buyer)
-	nft.SetOnSale(false)
+	nft.SetSellerBeneficiary(sdk.AccAddress{})
+	nft.SetStatus(types.NFTStatusDefault)
 
 	if err := k.UpdateNFT(ctx, nft); err != nil {
 		return sdk.Result{
@@ -218,9 +242,12 @@ func doNFTCommissions(
 			vals = append(vals, vote.Validator)
 		}
 	}
-
+	lenVals := float64(len(vals))
+	if len(vals) == 0 {
+		lenVals = 1.0
+	}
 	// first calculate all commissions and total commission as sum of them
-	singleValCommission := GetCommission(price, mptypes.DefaultValidatorsCommission/float64(len(vals)))
+	singleValCommission := GetCommission(price, types.DefaultValidatorsCommission/lenVals)
 	totalValsCommission := sdk.NewCoins()
 	for i := 0; i < len(vals); i++ {
 		totalValsCommission = totalValsCommission.Add(singleValCommission)

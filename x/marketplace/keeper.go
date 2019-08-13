@@ -22,6 +22,7 @@ type Keeper struct {
 	distrKeeper              distribution.Keeper
 	storeKey                 sdk.StoreKey // Unexposed key to access store from sdk.Context
 	currencyRegistryStoreKey *sdk.KVStoreKey
+	auctionStoreKey          *sdk.KVStoreKey
 	cdc                      *codec.Codec // The wire codec for binary encoding/decoding.
 	config                   *config.MPServerConfig
 	msgMetr                  *common.MsgMetrics
@@ -34,6 +35,7 @@ func NewKeeper(
 	distrKeeper distribution.Keeper,
 	storeKey sdk.StoreKey,
 	currencyRegistryStoreKey *sdk.KVStoreKey,
+	auctionStoreKey *sdk.KVStoreKey,
 	cdc *codec.Codec,
 	cfg *config.MPServerConfig,
 	msgMetr *common.MsgMetrics,
@@ -44,6 +46,7 @@ func NewKeeper(
 		distrKeeper:              distrKeeper,
 		storeKey:                 storeKey,
 		currencyRegistryStoreKey: currencyRegistryStoreKey,
+		auctionStoreKey:          auctionStoreKey,
 		cdc:                      cdc,
 		config:                   cfg,
 		msgMetr:                  msgMetr,
@@ -119,9 +122,33 @@ func (k Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sd
 	if !nft.GetOwner().Equals(owner) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
 	}
+
+	if nft.IsOnSale() {
+		return fmt.Errorf("NFT #%s is alredy on sale", id)
+	}
 	nft.SetPrice(price)
-	nft.SetOnSale(true)
+	nft.SetStatus(types.NFTStatusOnMarket)
 	nft.SetSellerBeneficiary(beneficiary)
+
+	return k.UpdateNFT(ctx, nft)
+}
+
+func (k Keeper) RemoveNFTFromMarket(ctx sdk.Context, id string, owner sdk.AccAddress) error {
+	nft, err := k.GetNFT(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to GetNFT: %v", err)
+	}
+
+	if !nft.GetOwner().Equals(owner) {
+		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
+	}
+
+	if !nft.IsOnMarket() {
+		return fmt.Errorf("NFT #%s is not on market", id)
+	}
+	nft.SetPrice(sdk.Coins{})
+	nft.SetStatus(types.NFTStatusDefault)
+	nft.SetSellerBeneficiary(sdk.AccAddress{})
 
 	return k.UpdateNFT(ctx, nft)
 }

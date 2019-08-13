@@ -14,6 +14,8 @@ const (
 	QueryNFTs           = "nfts"
 	QueryFungibleToken  = "fungible_token"
 	QueryFungibleTokens = "fungible_tokens"
+	QueryAuctionLot     = "auction_lot"
+	QueryAuctionLots    = "auction_lots"
 )
 
 // NewQuerier is the module level router for state queries
@@ -28,6 +30,10 @@ func NewQuerier(keeper Keeper) sdk.Querier {
 			return queryFungibleToken(ctx, path[1:], req, keeper)
 		case QueryFungibleTokens:
 			return queryFungibleTokens(ctx, req, keeper)
+		case QueryAuctionLot:
+			return queryAuctionLot(ctx, path[1:], req, keeper)
+		case QueryAuctionLots:
+			return queryAuctionLots(ctx, req, keeper)
 		default:
 			return nil, sdk.ErrUnknownRequest("unknown marketplace query endpoint")
 		}
@@ -84,4 +90,30 @@ func queryFungibleTokens(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) 
 	}
 
 	return keeper.cdc.MustMarshalJSON(fts), nil
+}
+
+func queryAuctionLot(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	id := path[0]
+	value, err := keeper.GetAuctionLot(ctx, id)
+	if err != nil {
+		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find AuctionLot with id %s: %v", id, err))
+	}
+
+	bz := keeper.cdc.MustMarshalJSON(value)
+	return bz, nil
+}
+
+func queryAuctionLots(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+	var (
+		lots     types.QueryResAuctionLots
+		iterator = keeper.GetAuctionLotsIterator(ctx)
+	)
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		var lot types.AuctionLot
+		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &lot)
+		lots.AuctionLots = append(lots.AuctionLots, &lot)
+	}
+
+	return keeper.cdc.MustMarshalJSON(lots), nil
 }

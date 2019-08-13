@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -140,7 +142,7 @@ func (m MsgTransferNFT) GetSigners() []sdk.AccAddress {
 
 type MsgPutNFTOnMarket struct {
 	Owner sdk.AccAddress `json:"owner"`
-	// Beneficiary is the cosmos user who gets the commission for this transaction.
+	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
 	Beneficiary sdk.AccAddress `json:"beneficiary"`
 	TokenID     string         `json:"token_id"`
 	Price       sdk.Coins      `json:"price"`
@@ -185,6 +187,54 @@ func (m MsgPutNFTOnMarket) GetSignBytes() []byte {
 
 // GetSigners defines whose signature is required
 func (m MsgPutNFTOnMarket) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgPutNFTOnMarket
+//
+// --------------------------------------------------------------------------
+
+type MsgRemoveNFTFromMarket struct {
+	Owner   sdk.AccAddress `json:"owner"`
+	TokenID string         `json:"token_id"`
+}
+
+func NewMsgRemoveNFTFromMarket(owner sdk.AccAddress, tokenID string) *MsgRemoveNFTFromMarket {
+	return &MsgRemoveNFTFromMarket{
+		Owner:   owner,
+		TokenID: tokenID,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgRemoveNFTFromMarket) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgRemoveNFTFromMarket) Type() string { return "remove_from_market_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgRemoveNFTFromMarket) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgRemoveNFTFromMarket) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgRemoveNFTFromMarket) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Owner}
 }
 
@@ -432,4 +482,265 @@ func (m MsgBurnFungibleTokens) GetSigners() []sdk.AccAddress {
 
 func isTokenURIValid(tokenURI string) bool {
 	return true
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgPutNFTOnAuction
+//
+// --------------------------------------------------------------------------
+
+type MsgPutNFTOnAuction struct {
+	Owner sdk.AccAddress `json:"owner"`
+	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
+	Beneficiary  sdk.AccAddress `json:"beneficiary"`
+	TokenID      string         `json:"token_id"`
+	OpeningPrice sdk.Coins      `json:"opening_price"`
+	BuyoutPrice  sdk.Coins      `json:"buyout_price"`
+	TimeToSell   time.Time      `json:"time_to_sell"`
+}
+
+func NewMsgPutNFTOnAuction(owner, beneficiary sdk.AccAddress, tokenID string,
+	openingPrice, buyoutPrice sdk.Coins, timeToSell time.Time) *MsgPutNFTOnAuction {
+	return &MsgPutNFTOnAuction{
+		Owner:        owner,
+		TokenID:      tokenID,
+		OpeningPrice: openingPrice,
+		BuyoutPrice:  buyoutPrice,
+		Beneficiary:  beneficiary,
+		TimeToSell:   timeToSell,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgPutNFTOnAuction) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgPutNFTOnAuction) Type() string { return "put_on_auction_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgPutNFTOnAuction) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	if m.OpeningPrice.IsZero() || m.OpeningPrice.IsAnyNegative() {
+		return sdk.ErrUnknownRequest("Price cannot be zero or negative")
+	}
+	if m.TimeToSell.IsZero() {
+		return sdk.ErrUnknownRequest("Time cannot be zero")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgPutNFTOnAuction) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgPutNFTOnAuction) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgRemoveNFTFromAuction
+//
+// --------------------------------------------------------------------------
+
+type MsgRemoveNFTFromAuction MsgRemoveNFTFromMarket
+
+func NewMsgRemoveNFTFromAuction(owner sdk.AccAddress, tokenID string) *MsgRemoveNFTFromAuction {
+	return &MsgRemoveNFTFromAuction{
+		Owner:   owner,
+		TokenID: tokenID,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgRemoveNFTFromAuction) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgRemoveNFTFromAuction) Type() string { return "remove_from_auction_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgRemoveNFTFromAuction) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgRemoveNFTFromAuction) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgRemoveNFTFromAuction) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgMakeBidOnAuction
+//
+// --------------------------------------------------------------------------
+
+type MsgMakeBidOnAuction struct {
+	Bidder sdk.AccAddress `json:"bidder"`
+	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
+	BuyerBeneficiary      sdk.AccAddress `json:"buyer_beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenID               string         `json:"token_id"`
+	Bid                   sdk.Coins      `json:"bid"`
+}
+
+func NewMsgMakeBidOnAuction(bidder, buyerBeneficiary sdk.AccAddress, tokenID string, bid sdk.Coins, commission string) *MsgMakeBidOnAuction {
+	return &MsgMakeBidOnAuction{
+		Bidder:                bidder,
+		BuyerBeneficiary:      buyerBeneficiary,
+		TokenID:               tokenID,
+		Bid:                   bid,
+		BeneficiaryCommission: commission,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgMakeBidOnAuction) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgMakeBidOnAuction) Type() string { return "make_bid_on_auction_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgMakeBidOnAuction) ValidateBasic() sdk.Error {
+	if m.Bidder.Empty() {
+		return sdk.ErrInvalidAddress(m.Bidder.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgMakeBidOnAuction) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgMakeBidOnAuction) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Bidder}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgFinishAuction
+//
+// --------------------------------------------------------------------------
+
+type MsgFinishAuction MsgRemoveNFTFromMarket
+
+func NewMsgFinishAuction(owner sdk.AccAddress, tokenID string) *MsgFinishAuction {
+	return &MsgFinishAuction{
+		Owner:   owner,
+		TokenID: tokenID,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgFinishAuction) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgFinishAuction) Type() string { return "finish_auction_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgFinishAuction) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgFinishAuction) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgFinishAuction) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBuyoutOnAuction
+//
+// --------------------------------------------------------------------------
+
+type MsgBuyoutOnAuction struct {
+	Buyer                 sdk.AccAddress `json:"buyer"`
+	BuyerBeneficiary      sdk.AccAddress `json:"buyer_beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenID               string         `json:"token_id"`
+}
+
+func NewMsgBuyOutOnAuction(bidder, buyerBeneficiary sdk.AccAddress, tokenID string, commission string) *MsgBuyoutOnAuction {
+	return &MsgBuyoutOnAuction{
+		Buyer:                 bidder,
+		BuyerBeneficiary:      buyerBeneficiary,
+		TokenID:               tokenID,
+		BeneficiaryCommission: commission,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBuyoutOnAuction) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBuyoutOnAuction) Type() string { return "buyout_on_auction_nft" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBuyoutOnAuction) ValidateBasic() sdk.Error {
+	if m.Buyer.Empty() {
+		return sdk.ErrInvalidAddress(m.Buyer.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBuyoutOnAuction) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBuyoutOnAuction) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Buyer}
 }

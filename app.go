@@ -77,6 +77,7 @@ type marketplaceApp struct {
 	tkeyDistr           *sdk.TransientStoreKey
 	keyNS               *sdk.KVStoreKey
 	keyRegisterCurrency *sdk.KVStoreKey
+	keyAuction          *sdk.KVStoreKey
 
 	keyParams   *sdk.KVStoreKey
 	tkeyParams  *sdk.TransientStoreKey
@@ -96,7 +97,7 @@ type marketplaceApp struct {
 	mm *module.Manager
 }
 
-// NewNameServiceApp is a constructor function for marketplaceApp
+// NewMarketplaceApp is a constructor function for marketplaceApp
 func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 
 	// First define the top level codec that will be shared by the different modules
@@ -118,7 +119,8 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		keyDistr:            sdk.NewKVStoreKey(distr.StoreKey),
 		tkeyDistr:           sdk.NewTransientStoreKey(distr.TStoreKey),
 		keyNS:               sdk.NewKVStoreKey(marketplace.StoreKey),
-		keyRegisterCurrency: sdk.NewKVStoreKey("register_currency"),
+		keyRegisterCurrency: sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey),
+		keyAuction:          sdk.NewKVStoreKey(marketplace.AuctionKey),
 		keyParams:           sdk.NewKVStoreKey(params.StoreKey),
 		tkeyParams:          sdk.NewTransientStoreKey(params.TStoreKey),
 		keySlashing:         sdk.NewKVStoreKey(slashing.StoreKey),
@@ -196,6 +198,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.distrKeeper,
 		app.keyNS,
 		app.keyRegisterCurrency,
+		app.keyAuction,
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
@@ -255,6 +258,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.keySlashing,
 		app.keyNS,
 		app.keyRegisterCurrency,
+		app.keyAuction,
 		app.keyParams,
 		app.tkeyParams,
 	)
@@ -290,6 +294,7 @@ func (app *marketplaceApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBl
 	return app.mm.BeginBlock(ctx, req)
 }
 func (app *marketplaceApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	app.nsKeeper.CheckFinishedAuctions(ctx)
 	return app.mm.EndBlock(ctx, req)
 }
 func (app *marketplaceApp) LoadHeight(height int64) error {
