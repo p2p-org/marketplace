@@ -1,6 +1,7 @@
 package marketplace_test
 
 import (
+	"github.com/dgamingfoundation/marketplace/common"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -142,7 +143,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	}
 
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
-		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, cdc, config.DefaultMPServerConfig())
+		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, cdc, config.DefaultMPServerConfig(), common.NewPrometheusMsgMetrics("marketplace"))
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)

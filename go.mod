@@ -8,7 +8,8 @@ require (
 	github.com/gorilla/mux v1.7.0
 	github.com/magiconair/properties v1.8.0
 	github.com/mattn/go-isatty v0.0.7 // indirect
-	github.com/prometheus/procfs v0.0.0-20190328153300-af7bedc223fb // indirect
+	github.com/prometheus/client_golang v1.0.0
+	github.com/prometheus/common v0.4.1
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2

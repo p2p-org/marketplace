@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"fmt"
+	"github.com/dgamingfoundation/marketplace/common"
 
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/distribution"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
+	pl "github.com/prometheus/common/log"
 )
 
 // Keeper maintains the link to data storage and exposes getter/setter methods for the various parts of the state machine
@@ -22,6 +24,7 @@ type Keeper struct {
 	currencyRegistryStoreKey *sdk.KVStoreKey
 	cdc                      *codec.Codec // The wire codec for binary encoding/decoding.
 	config                   *config.MPServerConfig
+	msgMetr                  *common.MsgMetrics
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -33,6 +36,7 @@ func NewKeeper(
 	currencyRegistryStoreKey *sdk.KVStoreKey,
 	cdc *codec.Codec,
 	cfg *config.MPServerConfig,
+	msgMetr *common.MsgMetrics,
 ) Keeper {
 	return Keeper{
 		coinKeeper:               coinKeeper,
@@ -42,7 +46,17 @@ func NewKeeper(
 		currencyRegistryStoreKey: currencyRegistryStoreKey,
 		cdc:                      cdc,
 		config:                   cfg,
+		msgMetr:                  msgMetr,
 	}
+}
+
+func (k Keeper) increaseCounter(labels ...string) {
+	counter, err := k.msgMetr.NumMsgs.GetMetricWithLabelValues(labels...)
+	if err != nil {
+		pl.Errorf("get metrics with label values error: %v", err)
+		return
+	}
+	counter.Inc()
 }
 
 func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {

@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"fmt"
+	"github.com/dgamingfoundation/marketplace/common"
 	"strconv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -40,6 +41,7 @@ func NewHandler(keeper Keeper) sdk.Handler {
 }
 
 func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, keeper Keeper, msg MsgCreateFungibleToken) sdk.Result {
+	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
 	if err := keeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -47,10 +49,12 @@ func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, keeper Keeper, msg M
 			Data:      []byte(fmt.Sprintf("failed to create currency: %v", err)),
 		}
 	}
+	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
 	return sdk.Result{}
 }
 
 func handleMsgTransferFungibleTokens(ctx sdk.Context, keeper Keeper, msg MsgTransferFungibleTokens) sdk.Result {
+	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
 	if err := keeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -58,10 +62,12 @@ func handleMsgTransferFungibleTokens(ctx sdk.Context, keeper Keeper, msg MsgTran
 			Data:      []byte(fmt.Sprintf("failed to transfer coins: %v", err)),
 		}
 	}
+	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
 	return sdk.Result{}
 }
 
 func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result {
+	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMintNFT)
 	nft := NewNFT(
 		xnft.NewBaseNFT(
 			msg.TokenID,
@@ -80,11 +86,12 @@ func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result
 			Data:      []byte(fmt.Sprintf("failed to MintNFT: %v", err)),
 		}
 	}
-
+	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMintNFT)
 	return sdk.Result{}
 }
 
 func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) sdk.Result {
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferNFT)
 	if err := k.TransferNFT(ctx, msg.TokenID, msg.Sender, msg.Recipient); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -92,10 +99,12 @@ func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) sdk.Res
 			Data:      []byte(fmt.Sprintf("failed to TransferNFT: %v", err)),
 		}
 	}
+	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferNFT)
 	return sdk.Result{}
 }
 
 func handleMsgPutNFTOnMarket(ctx sdk.Context, k Keeper, msg MsgPutNFTOnMarket) sdk.Result {
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgPutNFTOnMarket)
 	if !k.IsDenomExist(ctx, msg.Price) {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -111,11 +120,12 @@ func handleMsgPutNFTOnMarket(ctx sdk.Context, k Keeper, msg MsgPutNFTOnMarket) s
 			Data:      []byte(fmt.Sprintf("failed to PutNFTOnMarket: %v", err)),
 		}
 	}
-
+	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgPutNFTOnMarket)
 	return sdk.Result{}
 }
 
 func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyNFT)
 	nft, err := k.GetNFT(ctx, msg.TokenID)
 	if err != nil {
 		return sdk.Result{
@@ -179,7 +189,7 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 			Data:      []byte(fmt.Sprintf("failed to BuyNFT: %v", err)),
 		}
 	}
-
+	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBuyNFT)
 	return sdk.Result{}
 }
 
@@ -326,6 +336,7 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 }
 
 func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams) sdk.Result {
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
 	nft, err := k.GetNFT(ctx, msg.TokenID)
 	if err != nil {
 		return sdk.Result{
@@ -380,11 +391,12 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams)
 			Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams: %v", err)),
 		}
 	}
-
+	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
 	return sdk.Result{}
 }
 
 func handleMsgBurnFT(ctx sdk.Context, k Keeper, msg MsgBurnFungibleToken) sdk.Result {
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
 	if err := k.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
 		return sdk.Result{
 			Code:      sdk.CodeUnknownRequest,
@@ -392,5 +404,6 @@ func handleMsgBurnFT(ctx sdk.Context, k Keeper, msg MsgBurnFungibleToken) sdk.Re
 			Data:      []byte(fmt.Sprintf("failed to burn coins: %v", err)),
 		}
 	}
+	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
 	return sdk.Result{}
 }

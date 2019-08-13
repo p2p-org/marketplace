@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dgamingfoundation/marketplace/common"
 	"os"
 
 	"github.com/spf13/viper"
@@ -197,6 +198,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.keyRegisterCurrency,
 		app.cdc,
 		srvCfg,
+		common.NewPrometheusMsgMetrics("marketplace"),
 	)
 
 	app.mm = module.NewManager(
