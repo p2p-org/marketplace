@@ -23,8 +23,6 @@ var (
 )
 
 type (
-	MsgMintNFT             = types.MsgMintNFT
-	MsgTransferNFT         = types.MsgTransferNFT
 	MsgPutNFTOnMarket      = types.MsgPutNFTOnMarket
 	MsgRemoveNFTFromMarket = types.MsgRemoveNFTFromMarket
 	MsgBuyNFT              = types.MsgBuyNFT

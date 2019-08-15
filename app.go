@@ -3,32 +3,32 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dgamingfoundation/marketplace/common"
 	"os"
-
-	"github.com/spf13/viper"
-
-	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
-
-	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/genaccounts"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	distr "github.com/cosmos/cosmos-sdk/x/distribution"
+	"github.com/cosmos/cosmos-sdk/x/genaccounts"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/cosmos/cosmos-sdk/x/mint"
+	"github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/cosmos/cosmos-sdk/x/supply"
+	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
+	"github.com/spf13/viper"
+	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
+	tmtypes "github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const appName = "marketplace"
@@ -47,10 +47,13 @@ var (
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
 		params.AppModuleBasic{},
-		marketplace.AppModule{},
 		staking.AppModuleBasic{},
 		distr.AppModuleBasic{},
 		slashing.AppModuleBasic{},
+		supply.AppModuleBasic{},
+		nft.AppModuleBasic{},
+
+		marketplace.AppModule{},
 	)
 )
 
@@ -68,30 +71,32 @@ type marketplaceApp struct {
 	cdc *codec.Codec
 
 	// Keys to access the substores
-	keyMain             *sdk.KVStoreKey
-	keyAccount          *sdk.KVStoreKey
-	keyFeeCollection    *sdk.KVStoreKey
-	keyStaking          *sdk.KVStoreKey
-	tkeyStaking         *sdk.TransientStoreKey
-	keyDistr            *sdk.KVStoreKey
-	tkeyDistr           *sdk.TransientStoreKey
-	keyNS               *sdk.KVStoreKey
-	keyRegisterCurrency *sdk.KVStoreKey
-	keyAuction          *sdk.KVStoreKey
-
+	keyMain     *sdk.KVStoreKey
+	keyAccount  *sdk.KVStoreKey
+	keySupply   *sdk.KVStoreKey
+	keyStaking  *sdk.KVStoreKey
+	tkeyStaking *sdk.TransientStoreKey
+	keyDistr    *sdk.KVStoreKey
+	tkeyDistr   *sdk.TransientStoreKey
+	keyNFT      *sdk.KVStoreKey
 	keyParams   *sdk.KVStoreKey
 	tkeyParams  *sdk.TransientStoreKey
 	keySlashing *sdk.KVStoreKey
 
 	// Keepers
-	accountKeeper       auth.AccountKeeper
-	bankKeeper          bank.Keeper
-	stakingKeeper       staking.Keeper
-	slashingKeeper      slashing.Keeper
-	distrKeeper         distr.Keeper
-	feeCollectionKeeper auth.FeeCollectionKeeper
-	paramsKeeper        params.Keeper
-	nsKeeper            marketplace.Keeper
+	accountKeeper  auth.AccountKeeper
+	bankKeeper     bank.Keeper
+	supplyKeeper   supply.Keeper
+	stakingKeeper  staking.Keeper
+	slashingKeeper slashing.Keeper
+	distrKeeper    distr.Keeper
+	paramsKeeper   params.Keeper
+	nftKeeper      nft.Keeper
+
+	mpKeeper            marketplace.Keeper
+	keyMP               *sdk.KVStoreKey
+	keyRegisterCurrency *sdk.KVStoreKey
+	keyAuction          *sdk.KVStoreKey
 
 	// Module Manager
 	mm *module.Manager
@@ -111,26 +116,28 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		BaseApp: bApp,
 		cdc:     cdc,
 
-		keyMain:             sdk.NewKVStoreKey(bam.MainStoreKey),
-		keyAccount:          sdk.NewKVStoreKey(auth.StoreKey),
-		keyFeeCollection:    sdk.NewKVStoreKey(auth.FeeStoreKey),
-		keyStaking:          sdk.NewKVStoreKey(staking.StoreKey),
-		tkeyStaking:         sdk.NewTransientStoreKey(staking.TStoreKey),
-		keyDistr:            sdk.NewKVStoreKey(distr.StoreKey),
-		tkeyDistr:           sdk.NewTransientStoreKey(distr.TStoreKey),
-		keyNS:               sdk.NewKVStoreKey(marketplace.StoreKey),
+		keyMain:     sdk.NewKVStoreKey(bam.MainStoreKey),
+		keyAccount:  sdk.NewKVStoreKey(auth.StoreKey),
+		keySupply:   sdk.NewKVStoreKey(supply.StoreKey),
+		keyStaking:  sdk.NewKVStoreKey(staking.StoreKey),
+		tkeyStaking: sdk.NewTransientStoreKey(staking.TStoreKey),
+		keyDistr:    sdk.NewKVStoreKey(distr.StoreKey),
+		tkeyDistr:   sdk.NewTransientStoreKey("transient_" + distr.ModuleName),
+		keyNFT:      sdk.NewKVStoreKey(nft.StoreKey),
+		keyParams:   sdk.NewKVStoreKey(params.StoreKey),
+		tkeyParams:  sdk.NewTransientStoreKey(params.TStoreKey),
+		keySlashing: sdk.NewKVStoreKey(slashing.StoreKey),
+
+		keyMP:               sdk.NewKVStoreKey(marketplace.StoreKey),
 		keyRegisterCurrency: sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey),
 		keyAuction:          sdk.NewKVStoreKey(marketplace.AuctionKey),
-		keyParams:           sdk.NewKVStoreKey(params.StoreKey),
-		tkeyParams:          sdk.NewTransientStoreKey(params.TStoreKey),
-		keySlashing:         sdk.NewKVStoreKey(slashing.StoreKey),
 	}
 
 	// The ParamsKeeper handles parameter storage for the application
 	app.paramsKeeper = params.NewKeeper(app.cdc, app.keyParams, app.tkeyParams, params.DefaultCodespace)
 	// Set specific supspaces
 	authSubspace := app.paramsKeeper.Subspace(auth.DefaultParamspace)
-	bankSupspace := app.paramsKeeper.Subspace(bank.DefaultParamspace)
+	bankSubspace := app.paramsKeeper.Subspace(bank.DefaultParamspace)
 	stakingSubspace := app.paramsKeeper.Subspace(staking.DefaultParamspace)
 	distrSubspace := app.paramsKeeper.Subspace(distr.DefaultParamspace)
 	slashingSubspace := app.paramsKeeper.Subspace(slashing.DefaultParamspace)
@@ -146,31 +153,50 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	// The BankKeeper allows you perform sdk.Coins interactions
 	app.bankKeeper = bank.NewBaseKeeper(
 		app.accountKeeper,
-		bankSupspace,
+		bankSubspace,
 		bank.DefaultCodespace,
+		nil, // TODO: maybe we should do something about those blacklisted addresses.
 	)
 
-	// The FeeCollectionKeeper collects transaction fees and renders them to the fee distribution module
-	app.feeCollectionKeeper = auth.NewFeeCollectionKeeper(cdc, app.keyFeeCollection)
+	maccPerms := map[string][]string{
+		auth.FeeCollectorName:     nil,
+		distr.ModuleName:          nil,
+		nft.ModuleName:            nil,
+		mint.ModuleName:           {supply.Minter},
+		staking.BondedPoolName:    {supply.Burner, supply.Staking},
+		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
+	}
+	app.supplyKeeper = supply.NewKeeper(app.cdc, app.keySupply, app.accountKeeper,
+		app.bankKeeper, maccPerms)
 
 	// The staking keeper
 	stakingKeeper := staking.NewKeeper(
 		app.cdc,
 		app.keyStaking,
 		app.tkeyStaking,
-		app.bankKeeper,
+		app.supplyKeeper,
 		stakingSubspace,
 		staking.DefaultCodespace,
 	)
+
+	// The NFTKeeper is the Keeper from the module NFTs.
+	app.nftKeeper = nft.NewKeeper(
+		app.cdc,
+		app.keyNFT,
+	)
+
+	nftModule := nft.NewAppModule(app.nftKeeper)
+	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, &app.mpKeeper)
 
 	app.distrKeeper = distr.NewKeeper(
 		app.cdc,
 		app.keyDistr,
 		distrSubspace,
-		app.bankKeeper,
 		&stakingKeeper,
-		app.feeCollectionKeeper,
+		app.supplyKeeper,
 		distr.DefaultCodespace,
+		auth.FeeCollectorName,
+		nil, // TODO: maybe we should do something about those blacklisted addresses.
 	)
 
 	app.slashingKeeper = slashing.NewKeeper(
@@ -192,27 +218,30 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	srvCfg := ReadSrvConfig()
 	fmt.Printf("Server Config: \n %+v \n", srvCfg)
 
-	app.nsKeeper = marketplace.NewKeeper(
+	app.mpKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
 		app.stakingKeeper,
 		app.distrKeeper,
-		app.keyNS,
+		app.keyMP,
 		app.keyRegisterCurrency,
 		app.keyAuction,
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
+		&app.nftKeeper,
 	)
 
 	app.mm = module.NewManager(
 		genaccounts.NewAppModule(app.accountKeeper),
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
-		auth.NewAppModule(app.accountKeeper, app.feeCollectionKeeper),
+		auth.NewAppModule(app.accountKeeper),
 		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
-		marketplace.NewAppModule(app.nsKeeper, app.bankKeeper),
-		distr.NewAppModule(app.distrKeeper),
+		distr.NewAppModule(app.distrKeeper, app.supplyKeeper),
 		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
-		staking.NewAppModule(app.stakingKeeper, app.feeCollectionKeeper, app.distrKeeper, app.accountKeeper),
+		staking.NewAppModule(app.stakingKeeper, app.distrKeeper, app.accountKeeper, app.supplyKeeper),
+
+		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper),
+		overriddenNFTModule,
 	)
 
 	app.mm.SetOrderBeginBlockers(distr.ModuleName, slashing.ModuleName)
@@ -226,7 +255,10 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		auth.ModuleName,
 		bank.ModuleName,
 		slashing.ModuleName,
+		nft.ModuleName,
+
 		marketplace.ModuleName,
+
 		genutil.ModuleName,
 	)
 
@@ -241,26 +273,26 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	// The AnteHandler handles signature verification and transaction pre-processing
 	app.SetAnteHandler(
 		auth.NewAnteHandler(
-			app.accountKeeper,
-			app.feeCollectionKeeper,
-			auth.DefaultSigVerificationGasConsumer,
+			app.accountKeeper, app.supplyKeeper, auth.DefaultSigVerificationGasConsumer,
 		),
 	)
 
 	app.MountStores(
 		app.keyMain,
 		app.keyAccount,
-		app.keyFeeCollection,
+		app.keySupply,
 		app.keyStaking,
 		app.tkeyStaking,
 		app.keyDistr,
 		app.tkeyDistr,
 		app.keySlashing,
-		app.keyNS,
-		app.keyRegisterCurrency,
-		app.keyAuction,
+		app.keyNFT,
 		app.keyParams,
 		app.tkeyParams,
+
+		app.keyMP,
+		app.keyRegisterCurrency,
+		app.keyAuction,
 	)
 
 	err := app.LoadLatestVersion(app.keyMain)
@@ -281,7 +313,6 @@ func NewDefaultGenesisState() GenesisState {
 func (app *marketplaceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
 
-	app.nsKeeper.RegisterBasicDenoms(ctx)
 	err := app.cdc.UnmarshalJSON(req.AppStateBytes, &genesisState)
 	if err != nil {
 		panic(err)
@@ -294,7 +325,7 @@ func (app *marketplaceApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBl
 	return app.mm.BeginBlock(ctx, req)
 }
 func (app *marketplaceApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	app.nsKeeper.CheckFinishedAuctions(ctx)
+	app.mpKeeper.CheckFinishedAuctions(ctx)
 	return app.mm.EndBlock(ctx, req)
 }
 func (app *marketplaceApp) LoadHeight(height int64) error {

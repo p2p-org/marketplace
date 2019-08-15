@@ -17,7 +17,7 @@ func (k Keeper) PutNFTOnAuction(ctx sdk.Context, id string, owner, beneficiary s
 		return fmt.Errorf("failed to GetNFT: %v", err)
 	}
 
-	if !nft.GetOwner().Equals(owner) {
+	if !nft.Owner.Equals(owner) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
 	}
 
@@ -50,7 +50,7 @@ func (k Keeper) RemoveNFTFromAuction(ctx sdk.Context, id string, owner sdk.AccAd
 		return fmt.Errorf("failed to GetNFT: %v", err)
 	}
 
-	if !nft.GetOwner().Equals(owner) {
+	if !nft.Owner.Equals(owner) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
 	}
 
@@ -59,10 +59,10 @@ func (k Keeper) RemoveNFTFromAuction(ctx sdk.Context, id string, owner sdk.AccAd
 
 func (k Keeper) removeNFTFromAuction(ctx sdk.Context, nft *NFT) error {
 	if nft.Status != types.NFTStatusOnAuction {
-		return fmt.Errorf("NFT #%s is not on auction", nft.GetID())
+		return fmt.Errorf("NFT #%s is not on auction", nft.ID)
 	}
 
-	err := k.deleteAuctionLot(ctx, nft.GetID())
+	err := k.deleteAuctionLot(ctx, nft.ID)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (k Keeper) BuyLotOnAuction(ctx sdk.Context, buyer, buyerBeneficiary sdk.Acc
 	}
 
 	commission := types.DefaultBeneficiariesCommission
-	balances := GetBalances(ctx, k, buyer, buyerBeneficiary, nft.SellerBeneficiary, nft.GetOwner())
+	balances := GetBalances(ctx, k, buyer, buyerBeneficiary, nft.SellerBeneficiary, nft.Owner)
 	if lot.LastBid != nil {
 		parsed, err := strconv.ParseFloat(lot.LastBid.BeneficiaryCommission, 64)
 		if err == nil {
@@ -141,14 +141,14 @@ func (k Keeper) BuyLotOnAuction(ctx sdk.Context, buyer, buyerBeneficiary sdk.Acc
 		ctx,
 		k,
 		buyer,
-		nft.GetOwner(),
+		nft.Owner,
 		nft.SellerBeneficiary,
 		buyerBeneficiary,
 		price,
 		commission,
 	)
 
-	err = k.coinKeeper.SendCoins(ctx, buyer, nft.GetOwner(), priceAfterCommission)
+	err = k.coinKeeper.SendCoins(ctx, buyer, nft.Owner, priceAfterCommission)
 	if err != nil {
 		RollbackCommissions(ctx, k, logger, balances)
 		return fmt.Errorf("buyer does not have enough coins")
@@ -162,7 +162,7 @@ func (k Keeper) BuyLotOnAuction(ctx sdk.Context, buyer, buyerBeneficiary sdk.Acc
 
 	// transfer nfr to new owner
 	nft.SetSellerBeneficiary(sdk.AccAddress{})
-	nft.BaseNFT = nft.SetOwner(buyer)
+	nft.Owner = buyer
 	nft.SetStatus(types.NFTStatusDefault)
 
 	if err := k.UpdateNFT(ctx, nft); err != nil {

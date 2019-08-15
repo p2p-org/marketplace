@@ -2,6 +2,9 @@ package marketplace
 
 import (
 	"fmt"
+
+	"github.com/cosmos/cosmos-sdk/x/nft"
+
 	"github.com/dgamingfoundation/marketplace/common"
 
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
@@ -26,6 +29,7 @@ type Keeper struct {
 	cdc                      *codec.Codec // The wire codec for binary encoding/decoding.
 	config                   *config.MPServerConfig
 	msgMetr                  *common.MsgMetrics
+	nftKeeper                *nft.Keeper
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -39,6 +43,7 @@ func NewKeeper(
 	cdc *codec.Codec,
 	cfg *config.MPServerConfig,
 	msgMetr *common.MsgMetrics,
+	nftKeeper *nft.Keeper,
 ) Keeper {
 	return Keeper{
 		coinKeeper:               coinKeeper,
@@ -50,6 +55,7 @@ func NewKeeper(
 		cdc:                      cdc,
 		config:                   cfg,
 		msgMetr:                  msgMetr,
+		nftKeeper:                nftKeeper,
 	}
 }
 
@@ -76,7 +82,7 @@ func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
 }
 
 func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
-	id := nft.GetID()
+	id := nft.ID
 	store := ctx.KVStore(k.storeKey)
 	if store.Has([]byte(id)) {
 		return fmt.Errorf("nft with ID %s already exists", id)
@@ -99,68 +105,64 @@ func (k Keeper) GetRegisteredCurrenciesIterator(ctx sdk.Context) sdk.Iterator {
 	return sdk.KVStorePrefixIterator(store, nil)
 }
 
-func (k Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.AccAddress) error {
-	nft, err := k.GetNFT(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to GetNFT: %v", err)
-	}
-
-	if !nft.GetOwner().Equals(sender) {
-		return fmt.Errorf("%s is not the owner of NFT #%s", sender.String(), id)
-	}
-	nft.BaseNFT = nft.SetOwner(recipient)
-
-	return k.UpdateNFT(ctx, nft)
-}
-
 func (k Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
-	nft, err := k.GetNFT(ctx, id)
+	token, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
 	}
 
-	if !nft.GetOwner().Equals(owner) {
+	if !token.Owner.Equals(owner) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
 	}
 
-	if nft.IsOnSale() {
+	if token.IsOnSale() {
 		return fmt.Errorf("NFT #%s is alredy on sale", id)
 	}
-	nft.SetPrice(price)
-	nft.SetStatus(types.NFTStatusOnMarket)
-	nft.SetSellerBeneficiary(beneficiary)
+	token.SetPrice(price)
+	token.SetStatus(types.NFTStatusOnMarket)
+	token.SetSellerBeneficiary(beneficiary)
 
-	return k.UpdateNFT(ctx, nft)
+	return k.UpdateNFT(ctx, token)
 }
 
 func (k Keeper) RemoveNFTFromMarket(ctx sdk.Context, id string, owner sdk.AccAddress) error {
-	nft, err := k.GetNFT(ctx, id)
+	token, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
 	}
 
-	if !nft.GetOwner().Equals(owner) {
+	if !token.Owner.Equals(owner) {
 		return fmt.Errorf("%s is not the owner of NFT #%s", owner.String(), id)
 	}
 
-	if !nft.IsOnMarket() {
+	if !token.IsOnMarket() {
 		return fmt.Errorf("NFT #%s is not on market", id)
 	}
-	nft.SetPrice(sdk.Coins{})
-	nft.SetStatus(types.NFTStatusDefault)
-	nft.SetSellerBeneficiary(sdk.AccAddress{})
+	token.SetPrice(sdk.Coins{})
+	token.SetStatus(types.NFTStatusDefault)
+	token.SetSellerBeneficiary(sdk.AccAddress{})
 
-	return k.UpdateNFT(ctx, nft)
+	return k.UpdateNFT(ctx, token)
 }
 
 func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 	store := ctx.KVStore(k.storeKey)
-	if !store.Has([]byte(newToken.GetID())) {
-		return fmt.Errorf("could not find NFT with id %s", newToken.GetID())
+	if !store.Has([]byte(newToken.ID)) {
+		return fmt.Errorf("could not find NFT with id %s", newToken.ID)
 	}
 
 	bz := k.cdc.MustMarshalJSON(newToken)
-	store.Set([]byte(newToken.GetID()), bz)
+	store.Set([]byte(newToken.ID), bz)
+
+	newBaseToken, err := k.nftKeeper.GetNFT(ctx, newToken.Denom, newToken.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get base token: %v", err)
+	}
+	newBaseToken.SetOwner(newToken.Owner)
+	if err := k.nftKeeper.UpdateNFT(ctx, newToken.Denom, newBaseToken); err != nil {
+		return fmt.Errorf("failed to update base token: %v", err)
+	}
+
 	return nil
 }
 

@@ -30,8 +30,6 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens", storeName), fungibleTokensHandler(cliCtx, storeName)).Methods("GET")
 	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens/{%s}", storeName, restName), fungibleTokenHandler(cliCtx, storeName)).Methods("GET")
 
-	r.HandleFunc(fmt.Sprintf("/%s/mint", storeName), mintHandler(cliCtx)).Methods("PUT")
-	r.HandleFunc(fmt.Sprintf("/%s/transfer", storeName), transferHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/put_on_market", storeName), putOnMarketHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/buy", storeName), buyHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/update_params", storeName), updateParamsHandler(cliCtx)).Methods("PUT")
@@ -86,54 +84,6 @@ func broadcastTransaction(
 }
 
 // --------------------------------------------------------------------------------------
-// Mint NFT
-
-type MintReq struct {
-	BaseReq rest.BaseReq `json:"base_req"`
-
-	Name     string `json:"name"`
-	Password string `json:"password"`
-
-	TokenID     string `json:"token_id"`
-	TokenName   string `json:"token_name"`
-	Description string `json:"description"`
-	Image       string `json:"image"`
-	TokenURI    string `json:"token_uri"`
-}
-
-func mintHandler(cliCtx context.CLIContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req MintReq
-		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
-			return
-		}
-
-		baseReq := req.BaseReq.Sanitize()
-		if !baseReq.ValidateBasic(w) {
-			return
-		}
-
-		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		cliCtx.FromName = req.Name
-		cliCtx.FromAddress = owner
-
-		// create the message
-		msg := types.NewMsgMintNFT(req.TokenID, owner, req.TokenName, req.Description, req.Image, req.TokenURI)
-		err = msg.ValidateBasic()
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
-	}
-}
-
-// --------------------------------------------------------------------------------------
 // Transfer NFT
 
 type TransferReq struct {
@@ -144,45 +94,6 @@ type TransferReq struct {
 
 	TokenID   string `json:"token_id"`
 	Recipient string `json:"recipient"`
-}
-
-func transferHandler(cliCtx context.CLIContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req TransferReq
-		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
-			return
-		}
-
-		baseReq := req.BaseReq.Sanitize()
-		if !baseReq.ValidateBasic(w) {
-			return
-		}
-
-		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		cliCtx.FromName = req.Name
-		cliCtx.FromAddress = owner
-
-		recipient, err := sdk.AccAddressFromBech32(req.Recipient)
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		// create the message
-		msg := types.NewMsgTransferNFT(req.TokenID, owner, recipient)
-		err = msg.ValidateBasic()
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
-	}
 }
 
 // --------------------------------------------------------------------------------------

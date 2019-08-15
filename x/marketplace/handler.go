@@ -2,11 +2,11 @@ package marketplace
 
 import (
 	"fmt"
-	"github.com/dgamingfoundation/marketplace/common"
 	"strconv"
 
+	"github.com/dgamingfoundation/marketplace/common"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -16,10 +16,6 @@ import (
 func NewHandler(keeper Keeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		switch msg := msg.(type) {
-		case MsgMintNFT:
-			return handleMsgMintNFT(ctx, keeper, msg)
-		case MsgTransferNFT:
-			return handleMsgTransferNFT(ctx, keeper, msg)
 		case MsgPutNFTOnMarket:
 			return handleMsgPutNFTOnMarket(ctx, keeper, msg)
 		case MsgRemoveNFTFromMarket:
@@ -51,119 +47,54 @@ func NewHandler(keeper Keeper) sdk.Handler {
 	}
 }
 
-func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, keeper Keeper, msg MsgCreateFungibleToken) sdk.Result {
-	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
-	if err := keeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to create currency: %v", err)),
-		}
+func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper Keeper, msg MsgCreateFungibleToken) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
+	if err := mpKeeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to create currency: %v", err)).Result()
 	}
-	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
 	return sdk.Result{}
 }
 
-func handleMsgTransferFungibleTokens(ctx sdk.Context, keeper Keeper, msg MsgTransferFungibleTokens) sdk.Result {
-	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
-	if err := keeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to transfer coins: %v", err)),
-		}
+func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper Keeper, msg MsgTransferFungibleTokens) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
+	if err := mpKeeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to transfer coins: %v", err)).Result()
 	}
-	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
 	return sdk.Result{}
 }
 
-func handleMsgMintNFT(ctx sdk.Context, keeper Keeper, msg MsgMintNFT) sdk.Result {
-	keeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMintNFT)
-	nft := NewNFT(
-		xnft.NewBaseNFT(
-			msg.TokenID,
-			msg.Owner,
-			msg.Name,
-			msg.Description,
-			msg.Image,
-			msg.TokenURI,
-		),
-		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(0))),
-	)
-	if err := keeper.MintNFT(ctx, nft); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to MintNFT: %v", err)),
-		}
+func handleMsgPutNFTOnMarket(ctx sdk.Context, mpKeeper Keeper, msg MsgPutNFTOnMarket) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgPutNFTOnMarket)
+	if !mpKeeper.IsDenomExist(ctx, msg.Price) {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to PutNFTOnMarket: denom does not exist")).Result()
 	}
-	keeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMintNFT)
+
+	if err := mpKeeper.PutNFTOnMarket(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to PutNFTOnMarket: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgPutNFTOnMarket)
 	return sdk.Result{}
 }
 
-func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) sdk.Result {
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferNFT)
-	if err := k.TransferNFT(ctx, msg.TokenID, msg.Sender, msg.Recipient); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to TransferNFT: %v", err)),
-		}
-	}
-	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferNFT)
-	return sdk.Result{}
-}
-
-func handleMsgPutNFTOnMarket(ctx sdk.Context, k Keeper, msg MsgPutNFTOnMarket) sdk.Result {
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgPutNFTOnMarket)
-	if !k.IsDenomExist(ctx, msg.Price) {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to PutNFTOnMarket: %v", "denom does not exist")),
-		}
-
-	}
-	if err := k.PutNFTOnMarket(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to PutNFTOnMarket: %v", err)),
-		}
-	}
-	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgPutNFTOnMarket)
-	return sdk.Result{}
-}
-
-func handleMsgRemoveNFTFromMarket(ctx sdk.Context, k Keeper, msg MsgRemoveNFTFromMarket) sdk.Result {
-	if err := k.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Owner); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to RemoveNFTFromMarket: %v", err)),
-		}
+func handleMsgRemoveNFTFromMarket(ctx sdk.Context, mpKeeper Keeper, msg MsgRemoveNFTFromMarket) sdk.Result {
+	if err := mpKeeper.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Owner); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveNFTFromMarket: %v", err)).Result()
 	}
 
 	return sdk.Result{}
 }
 
-func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyNFT)
-	nft, err := k.GetNFT(ctx, msg.TokenID)
+func handleMsgBuyNFT(ctx sdk.Context, mpKeeper Keeper, msg MsgBuyNFT) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyNFT)
+	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: %v", err)),
-		}
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
 	}
 
-	if !nft.IsOnMarket() {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: token %s is not for sale", nft.GetID())),
-		}
+	if !token.IsOnMarket() {
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: token is not for sale")).Result()
 	}
 
 	beneficiariesCommission := types.DefaultBeneficiariesCommission
@@ -171,49 +102,37 @@ func handleMsgBuyNFT(ctx sdk.Context, k Keeper, msg MsgBuyNFT) sdk.Result {
 	if err == nil {
 		beneficiariesCommission = parsed
 	}
-	if beneficiariesCommission > k.config.MaximumBeneficiaryCommission {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")),
-		}
+	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")).Result()
 	}
 
 	priceAfterCommission, err := doNFTCommissions(
 		ctx,
-		k,
+		mpKeeper,
 		msg.Buyer,
-		nft.Owner,
+		token.Owner,
 		msg.Beneficiary,
-		nft.SellerBeneficiary,
-		nft.GetPrice(),
+		token.SellerBeneficiary,
+		token.GetPrice(),
 		beneficiariesCommission,
 	)
 	if err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: failed to pay commissions: %v", err)),
-		}
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: failed to pay commissions: %v", err)).Result()
 	}
 
-	err = k.coinKeeper.SendCoins(ctx, msg.Buyer, nft.GetOwner(), priceAfterCommission)
+	err = mpKeeper.coinKeeper.SendCoins(ctx, msg.Buyer, token.Owner, priceAfterCommission)
 	if err != nil {
 		return sdk.ErrInsufficientCoins("Buyer does not have enough coins").Result()
 	}
 
-	nft.BaseNFT = nft.SetOwner(msg.Buyer)
-	nft.SetSellerBeneficiary(sdk.AccAddress{})
-	nft.SetStatus(types.NFTStatusDefault)
+	token.Owner = msg.Buyer
+	token.SetSellerBeneficiary(sdk.AccAddress{})
+	token.SetStatus(types.NFTStatusDefault)
 
-	if err := k.UpdateNFT(ctx, nft); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to BuyNFT: %v", err)),
-		}
+	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
+		sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
 	}
-	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBuyNFT)
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBuyNFT)
 	return sdk.Result{}
 }
 
@@ -233,7 +152,7 @@ func doNFTCommissions(
 	if !k.coinKeeper.HasCoins(ctx, buyer, price) {
 		return nil, fmt.Errorf("user %s does not have enough funds", buyer.String())
 	}
-	logger.Info("user has enough funds, o.k.")
+	logger.Info("user has enough funds, o.nftKeeper.")
 
 	votes := ctx.VoteInfos()
 	var vals []abci_types.Validator
@@ -300,21 +219,21 @@ type balance struct {
 	amount sdk.Coins
 }
 
-func GetBalances(ctx sdk.Context, k Keeper, addrs ...sdk.AccAddress) []*balance {
+func GetBalances(ctx sdk.Context, mpKeeper Keeper, addrs ...sdk.AccAddress) []*balance {
 	var out []*balance
 	for _, addr := range addrs {
 		out = append(out, &balance{
 			addr:   addr,
-			amount: k.coinKeeper.GetCoins(ctx, addr),
+			amount: mpKeeper.coinKeeper.GetCoins(ctx, addr),
 		})
 	}
 
 	return out
 }
 
-func RollbackCommissions(ctx sdk.Context, k Keeper, logger log.Logger, initialBalances []*balance) {
+func RollbackCommissions(ctx sdk.Context, mpKeeper Keeper, logger log.Logger, initialBalances []*balance) {
 	for _, balance := range initialBalances {
-		if err := k.coinKeeper.SetCoins(ctx, balance.addr, balance.amount); err != nil {
+		if err := mpKeeper.coinKeeper.SetCoins(ctx, balance.addr, balance.amount); err != nil {
 			logger.Error("failed to rollback commissions", "addr", balance.addr.String(), "error", err)
 		}
 	}
@@ -362,22 +281,14 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 	return totalCommission
 }
 
-func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams) sdk.Result {
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
-	nft, err := k.GetNFT(ctx, msg.TokenID)
+func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper Keeper, msg MsgUpdateNFTParams) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
+	nft, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)),
-		}
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)).Result()
 	}
 	if !nft.Owner.Equals(msg.Owner) {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())),
-		}
+		return sdk.ErrUnknownRequest(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())).Result()
 	}
 
 	for _, v := range msg.Params {
@@ -386,51 +297,28 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, k Keeper, msg MsgUpdateNFTParams)
 		case types.FlagParamPrice:
 			price, err := sdk.ParseCoins(v.Value)
 			if err != nil {
-				return sdk.Result{
-					Code:      sdk.CodeUnknownRequest,
-					Codespace: "marketplace",
-					Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)),
-				}
+				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)).Result()
 			}
-			if !k.IsDenomExist(ctx, price) {
-				return sdk.Result{
-					Code:      sdk.CodeUnknownRequest,
-					Codespace: "marketplace",
-					Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", "denom is not registered")),
-				}
+			if !mpKeeper.IsDenomExist(ctx, price) {
+				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: denom is not registered")).Result()
+
 			}
 			nft.Price = price
-		case types.FlagParamDescription:
-			nft.Description = v.Value
-		case types.FlagParamTokenName:
-			nft.Name = v.Value
-		case types.FlagParamTokenURI:
-			nft.TokenURI = v.Value
-		case types.FlagParamImage:
-			nft.Image = v.Value
 		}
 	}
 
-	if err := k.UpdateNFT(ctx, nft); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to UpdateNFTParams: %v", err)),
-		}
+	if err := mpKeeper.UpdateNFT(ctx, nft); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams: %v", err)).Result()
 	}
-	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
 	return sdk.Result{}
 }
 
-func handleMsgBurnFT(ctx sdk.Context, k Keeper, msg MsgBurnFungibleToken) sdk.Result {
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
-	if err := k.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
-		return sdk.Result{
-			Code:      sdk.CodeUnknownRequest,
-			Codespace: "marketplace",
-			Data:      []byte(fmt.Sprintf("failed to burn coins: %v", err)),
-		}
+func handleMsgBurnFT(ctx sdk.Context, mpKeeper Keeper, msg MsgBurnFungibleToken) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
+	if err := mpKeeper.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to burn coins: %v", err)).Result()
 	}
-	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
 	return sdk.Result{}
 }

@@ -26,8 +26,6 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	marketplaceTxCmd.AddCommand(client.PostCommands(
-		GetCmdMintNFT(cdc),
-		GetCmdTransferNFT(cdc),
 		GetCmdPutNFTOnMarket(cdc),
 		GetCmdRemoveNFTFromMarket(cdc),
 		GetCmdBuyNFT(cdc),
@@ -44,57 +42,6 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	)...)
 
 	return marketplaceTxCmd
-}
-
-func GetCmdMintNFT(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "mint [token_id] [name] [description] [image] [token_uri]",
-		Short: "mint a new NFT",
-		Args:  cobra.ExactArgs(5),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			var (
-				owner       = cliCtx.GetFromAddress()
-				tokenID     = args[0]
-				name        = args[1]
-				description = args[2]
-				image       = args[3]
-				tokenURI    = args[4]
-			)
-			msg := types.NewMsgMintNFT(tokenID, owner, name, description, image, tokenURI)
-			if err := msg.ValidateBasic(); err != nil {
-				return err
-			}
-
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
-		},
-	}
-}
-
-func GetCmdTransferNFT(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "transfer [token_id] [recipient]",
-		Short: "transfer an NFT from one account to another",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			recipient, err := sdk.AccAddressFromBech32(args[1])
-			if err != nil {
-				return err
-			}
-
-			msg := types.NewMsgTransferNFT(args[0], cliCtx.GetFromAddress(), recipient)
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
-		},
-	}
 }
 
 func GetCmdPutNFTOnMarket(cdc *codec.Codec) *cobra.Command {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	xnft "github.com/cosmos/cosmos-sdk/x/nft"
 )
 
 type FungibleToken struct {
@@ -22,26 +21,31 @@ Denom: %s`, c.Creator.String(), c.EmissionAmount, c.Denom))
 }
 
 type NFT struct {
-	xnft.BaseNFT      `json:"nft"`
+	ID                string         `json:"id"`
+	Denom             string         `json:"denom"`
+	Owner             sdk.AccAddress `json:"owner"`
 	Price             sdk.Coins      `json:"price"`
 	Status            NFTStatus      `json:"status"`
 	SellerBeneficiary sdk.AccAddress `json:"seller_beneficiary"`
 	TimeCreated       time.Time      `json:"time_created"`
 }
 
-func NewNFT(nft xnft.BaseNFT, price sdk.Coins) *NFT {
+func NewNFT(id string, denom string, owner sdk.AccAddress, price sdk.Coins) *NFT {
 	return &NFT{
-		BaseNFT:     nft,
+		ID:          id,
+		Owner:       owner,
+		Denom:       denom,
 		Price:       price,
 		TimeCreated: time.Now().UTC(),
 	}
 }
 
 func (m NFT) String() string {
-	return strings.TrimSpace(fmt.Sprintf(`Owner: %s
-NFT: %s
+	return strings.TrimSpace(fmt.Sprintf(`ID: %s
+Owner: %s
+Denom: %s
 Price: %s
-Status: %v`, m.GetOwner(), m.BaseNFT, m.Price, m.Status))
+Status: %v`, m.ID, m.Owner, m.Denom, m.Price, m.Status))
 }
 
 func (m *NFT) GetPrice() sdk.Coins {
