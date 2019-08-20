@@ -3,7 +3,7 @@ package types
 import "strings"
 
 type QueryResNFTs struct {
-	NFTs []*NFT `json:"nfts"`
+	NFTs []*NFTInfo `json:"nfts"`
 }
 
 func (r QueryResNFTs) String() string {

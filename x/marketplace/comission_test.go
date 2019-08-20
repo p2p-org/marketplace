@@ -7,7 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgamingfoundation/cosmos-sdk/x/mint"
+	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
+	"github.com/dgamingfoundation/cosmos-sdk/x/supply"
 	"github.com/dgamingfoundation/marketplace/common"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/dgamingfoundation/cosmos-sdk/store"
 	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
@@ -16,7 +20,6 @@ import (
 	distr "github.com/dgamingfoundation/cosmos-sdk/x/distribution"
 	distrTypes "github.com/dgamingfoundation/cosmos-sdk/x/distribution/types"
 	"github.com/dgamingfoundation/cosmos-sdk/x/mock"
-	xnft "github.com/dgamingfoundation/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/cosmos-sdk/x/params"
 	"github.com/dgamingfoundation/cosmos-sdk/x/slashing"
 	"github.com/dgamingfoundation/cosmos-sdk/x/staking"
@@ -35,16 +38,17 @@ import (
 type marketplaceKeeperTest struct {
 	ctx sdk.Context
 
-	accountKeeper       auth.AccountKeeper
-	bankKeeper          bank.Keeper
-	stakingKeeper       staking.Keeper
-	feeCollectionKeeper auth.FeeCollectionKeeper
-	distrKeeper         distr.Keeper
-	slashingKeeper      slashing.Keeper
-	ms                  store.CommitMultiStore
-	marketKeeper        marketplace.Keeper
-	dbDir               string
-	addrs               []sdk.AccAddress
+	accountKeeper  auth.AccountKeeper
+	bankKeeper     bank.Keeper
+	stakingKeeper  staking.Keeper
+	distrKeeper    distr.Keeper
+	slashingKeeper slashing.Keeper
+	supplyKeeper   supply.Keeper
+	ms             store.CommitMultiStore
+	marketKeeper   *marketplace.Keeper
+	nftKeeper      *nft.Keeper
+	dbDir          string
+	addrs          []sdk.AccAddress
 }
 
 // clear removes temp dirs
@@ -73,12 +77,14 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	keyParams := sdk.NewKVStoreKey(params.StoreKey)
 	tkeyParams := sdk.NewTransientStoreKey(params.TStoreKey)
 	keyAccount := sdk.NewKVStoreKey(auth.StoreKey)
-	keyFeeCollection := sdk.NewKVStoreKey(auth.FeeStoreKey)
 	keyStaking := sdk.NewKVStoreKey(staking.StoreKey)
 	tkeyStaking := sdk.NewTransientStoreKey(staking.TStoreKey)
 	keySlashing := sdk.NewKVStoreKey(slashing.StoreKey)
 	keyDistr := sdk.NewKVStoreKey(distr.StoreKey)
-	keyRegisterCurrency := sdk.NewKVStoreKey("register_currency")
+	keySupply := sdk.NewKVStoreKey(supply.StoreKey)
+	keyAuctionStore := sdk.NewKVStoreKey(marketplace.AuctionKey)
+	keyNFT := sdk.NewKVStoreKey(nft.StoreKey)
+	keyRegisterCurrency := sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey)
 
 	paramsKeeper := params.NewKeeper(cdc, keyParams, tkeyParams, params.DefaultCodespace)
 
@@ -94,28 +100,44 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 		authSubspace,
 		auth.ProtoBaseAccount,
 	)
+
 	mpKeeperTest.bankKeeper = bank.NewBaseKeeper(
 		mpKeeperTest.accountKeeper,
 		bankSupspace,
 		bank.DefaultCodespace,
+		nil,
 	)
+
+	maccPerms := map[string][]string{
+		auth.FeeCollectorName:     nil,
+		distr.ModuleName:          nil,
+		nft.ModuleName:            nil,
+		mint.ModuleName:           {supply.Minter},
+		staking.BondedPoolName:    {supply.Burner, supply.Staking},
+		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
+	}
+
+	mpKeeperTest.supplyKeeper = supply.NewKeeper(cdc, keySupply, mpKeeperTest.accountKeeper,
+		mpKeeperTest.bankKeeper, maccPerms)
+
 	mpKeeperTest.stakingKeeper = staking.NewKeeper(
 		cdc,
 		keyStaking,
 		tkeyStaking,
-		mpKeeperTest.bankKeeper,
+		mpKeeperTest.supplyKeeper,
 		stakingSubspace,
 		staking.DefaultCodespace,
 	)
-	mpKeeperTest.feeCollectionKeeper = auth.NewFeeCollectionKeeper(cdc, keyFeeCollection)
+
 	mpKeeperTest.distrKeeper = distr.NewKeeper(
 		cdc,
 		keyDistr,
 		distrSubspace,
-		mpKeeperTest.bankKeeper,
-		&mpKeeperTest.stakingKeeper,
-		mpKeeperTest.feeCollectionKeeper,
+		mpKeeperTest.stakingKeeper,
+		mpKeeperTest.supplyKeeper,
 		distr.DefaultCodespace,
+		auth.FeeCollectorName,
+		nil,
 	)
 	mpKeeperTest.slashingKeeper = slashing.NewKeeper(
 		cdc,
@@ -134,17 +156,27 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.ms = store.NewCommitMultiStore(db)
 	mpKeeperTest.ms.MountStoreWithDB(mpStore, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyAccount, sdk.StoreTypeIAVL, db)
-	mpKeeperTest.ms.MountStoreWithDB(keyFeeCollection, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keySlashing, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyStaking, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyDistr, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyRegisterCurrency, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keyNFT, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keyAuctionStore, sdk.StoreTypeIAVL, db)
 	if err := mpKeeperTest.ms.LoadLatestVersion(); err != nil {
 		return nil, err
 	}
 
+	newKeeper := nft.NewKeeper(
+		cdc,
+		keyNFT,
+	)
+	mpKeeperTest.nftKeeper = &newKeeper
+	metr := &common.MsgMetrics{NumMsgs: prometheus.NewCounterVec(prometheus.CounterOpts{},
+		[]string{common.PrometheusLabelStatus, common.PrometheusLabelMsgType})}
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
-		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, cdc, config.DefaultMPServerConfig(), common.NewPrometheusMsgMetrics("marketplace"))
+		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, keyAuctionStore, cdc,
+		config.DefaultMPServerConfig(), metr,
+		mpKeeperTest.nftKeeper)
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)
@@ -222,15 +254,16 @@ func TestBuyPutOnMarketNFT(t *testing.T) {
 		_, err := mpKeeperTest.updateVoteInfos(data.validatorsCount, coins)
 		require.Nil(t, err)
 
-		nft := createNFT(mpKeeperTest.addrs[0])
 		handler := marketplace.NewHandler(mpKeeperTest.marketKeeper)
-		require.Nil(t, mpKeeperTest.marketKeeper.MintNFT(mpKeeperTest.ctx, nft))
+		msg := nft.NewMsgMintNFT(mpKeeperTest.addrs[0], mpKeeperTest.addrs[0], uuid.New().String(), denom, "")
+		result = marketplace.HandleMsgMintNFTMarketplace(mpKeeperTest.ctx, msg, mpKeeperTest.nftKeeper, mpKeeperTest.marketKeeper)
+		require.True(t, result.IsOK())
 
-		putOnMarketNFTMsg := types.NewMsgPutOnMarketNFT(mpKeeperTest.addrs[0], mpKeeperTest.addrs[2], nft.GetID(), price)
+		putOnMarketNFTMsg := types.NewMsgPutOnMarketNFT(mpKeeperTest.addrs[0], mpKeeperTest.addrs[2], msg.ID, price)
 		result = handler(mpKeeperTest.ctx, *putOnMarketNFTMsg)
 		require.True(t, result.IsOK())
 
-		buyNFTMsg := types.NewMsgBuyNFT(mpKeeperTest.addrs[1], mpKeeperTest.addrs[3], nft.GetID(), "")
+		buyNFTMsg := types.NewMsgBuyNFT(mpKeeperTest.addrs[1], mpKeeperTest.addrs[3], msg.ID, "")
 		result = handler(mpKeeperTest.ctx, *buyNFTMsg)
 		require.True(t, result.IsOK())
 
@@ -278,16 +311,11 @@ func TestCommission(t *testing.T) {
 }
 
 func createNFT(owner sdk.AccAddress) *types.NFT {
-	nft := marketplace.NewNFT(
-		xnft.NewBaseNFT(
-			uuid.New().String(),
-			owner,
-			"",
-			"",
-			"",
-			"",
-		),
+	token := marketplace.NewNFT(
+		uuid.New().String(),
+		"name",
+		owner,
 		sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(0))),
 	)
-	return nft
+	return token
 }

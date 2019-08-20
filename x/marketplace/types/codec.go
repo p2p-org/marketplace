@@ -28,4 +28,6 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgBuyoutOnAuction{}, "marketplace/MsgBuyoutOnAuction", nil)
 	cdc.RegisterConcrete(MsgFinishAuction{}, "marketplace/MsgFinishAuction", nil)
 	cdc.RegisterConcrete(MsgBurnFungibleTokens{}, "marketplace/BurnFungibleTokens", nil)
+	cdc.RegisterConcrete(NFTMetaData{}, "marketplace/NFTMetaData", nil)
+	cdc.RegisterConcrete(NFTInfo{}, "marketplace/NFTInfo", nil)
 }

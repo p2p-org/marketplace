@@ -17,12 +17,12 @@ Token's OnSale field equals false. (7.5).
 Scenario No. 7 should be performed both with no integer rounding and with integer rounding."
 
 uu=$(uuidgen)
-
-mpcli tx marketplace mint $uu name description image token_uri --from user1 -y <<< '12345678' >/dev/null
+user1_id=$(mpcli keys show user1 -a)
+mpcli tx nft mint name $uu $user1_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 
-nft_id=$(mpcli query marketplace nfts | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
+nft_id=$(mpcli query marketplace nft $uu | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
 
 if [[ -z "$nft_id" ]] || [[ $uu != $nft_id ]]
 then
@@ -49,11 +49,11 @@ echo "token bought"
 new_owner_id=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
 user1_id=$(mpcli keys show user1 -a)
 user2_id=$(mpcli keys show user2 -a)
-is_on_sale=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"on_sale\": )(.*)(?=.*)' -m 1 | tr -d ,)
+status=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"status\": \")(.*)(?=\".*)' -m 1 | tr -d ,)
 
-if [[ $is_on_sale == "true" ]]
+if [[ $status == "on_market" ]]
 then
-      echo "test FAILURE: token is still on sale"
+      echo "test FAILURE: token is still on market"
       exit 1
 fi
 

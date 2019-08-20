@@ -7,11 +7,12 @@ echo "Create an NFT. Transfer NFT from user1 to user2."
 echo "Expected: user2 becomes the owner of the NFT."
 
 uu=$(uuidgen)
-mpcli tx marketplace mint $uu name description image token_uri --from user1 -y <<< '12345678' >/dev/null
+user1_id=$(mpcli keys show user1 -a)
+mpcli tx nft mint name $uu $user1_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 
-nft_id=$(mpcli query marketplace nfts | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
+nft_id=$(mpcli query marketplace nft $uu | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
 
 if [[ $uu != $nft_id ]]
 then
@@ -22,11 +23,11 @@ else
 fi
 
 echo "transfer token"
-mpcli tx marketplace transfer $nft_id $(mpcli keys show user2 -a) --from user1 -y <<< '12345678' >/dev/null
+mpcli tx nft transfer $user1_id $(mpcli keys show user2 -a) name $nft_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 
-new_owner_id=$(mpcli query marketplace nfts | grep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
+new_owner_id=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
 u2_id=$(mpcli keys show user2 -a)
 
 if [[ $new_owner_id != $u2_id ]]

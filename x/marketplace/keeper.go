@@ -44,8 +44,8 @@ func NewKeeper(
 	cfg *config.MPServerConfig,
 	msgMetr *common.MsgMetrics,
 	nftKeeper *nft.Keeper,
-) Keeper {
-	return Keeper{
+) *Keeper {
+	return &Keeper{
 		coinKeeper:               coinKeeper,
 		stakingKeeper:            stakingKeeper,
 		distrKeeper:              distrKeeper,
@@ -59,7 +59,7 @@ func NewKeeper(
 	}
 }
 
-func (k Keeper) increaseCounter(labels ...string) {
+func (k *Keeper) increaseCounter(labels ...string) {
 	counter, err := k.msgMetr.NumMsgs.GetMetricWithLabelValues(labels...)
 	if err != nil {
 		pl.Errorf("get metrics with label values error: %v", err)
@@ -68,20 +68,20 @@ func (k Keeper) increaseCounter(labels ...string) {
 	counter.Inc()
 }
 
-func (k Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
+func (k *Keeper) GetNFT(ctx sdk.Context, id string) (*NFT, error) {
 	store := ctx.KVStore(k.storeKey)
 	if !store.Has([]byte(id)) {
 		return nil, fmt.Errorf("could not find NFT with id %s", id)
 	}
 
 	bz := store.Get([]byte(id))
-	var nft NFT
-	k.cdc.MustUnmarshalJSON(bz, &nft)
+	var token NFT
+	k.cdc.MustUnmarshalJSON(bz, &token)
 
-	return &nft, nil
+	return &token, nil
 }
 
-func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
+func (k *Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
 	id := nft.ID
 	store := ctx.KVStore(k.storeKey)
 	if store.Has([]byte(id)) {
@@ -93,19 +93,29 @@ func (k Keeper) MintNFT(ctx sdk.Context, nft *NFT) error {
 	return nil
 }
 
+func (k *Keeper) BurnNFT(ctx sdk.Context, id string) error {
+	store := ctx.KVStore(k.storeKey)
+	if !store.Has([]byte(id)) {
+		return fmt.Errorf("could not find NFT with id %s", id)
+	}
+
+	store.Delete([]byte(id))
+	return nil
+}
+
 // Get an iterator over all NFTs.
-func (k Keeper) GetNFTsIterator(ctx sdk.Context) sdk.Iterator {
+func (k *Keeper) GetNFTsIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.storeKey)
 	return sdk.KVStorePrefixIterator(store, nil)
 }
 
 // Get an iterator over all registered currencies
-func (k Keeper) GetRegisteredCurrenciesIterator(ctx sdk.Context) sdk.Iterator {
+func (k *Keeper) GetRegisteredCurrenciesIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	return sdk.KVStorePrefixIterator(store, nil)
 }
 
-func (k Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
+func (k *Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress, price sdk.Coins) error {
 	token, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
@@ -125,7 +135,7 @@ func (k Keeper) PutNFTOnMarket(ctx sdk.Context, id string, owner, beneficiary sd
 	return k.UpdateNFT(ctx, token)
 }
 
-func (k Keeper) RemoveNFTFromMarket(ctx sdk.Context, id string, owner sdk.AccAddress) error {
+func (k *Keeper) RemoveNFTFromMarket(ctx sdk.Context, id string, owner sdk.AccAddress) error {
 	token, err := k.GetNFT(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to GetNFT: %v", err)
@@ -145,7 +155,7 @@ func (k Keeper) RemoveNFTFromMarket(ctx sdk.Context, id string, owner sdk.AccAdd
 	return k.UpdateNFT(ctx, token)
 }
 
-func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
+func (k *Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 	store := ctx.KVStore(k.storeKey)
 	if !store.Has([]byte(newToken.ID)) {
 		return fmt.Errorf("could not find NFT with id %s", newToken.ID)
@@ -166,13 +176,14 @@ func (k Keeper) UpdateNFT(ctx sdk.Context, newToken *NFT) error {
 	return nil
 }
 
-func (k Keeper) IsDenomExist(ctx sdk.Context, coins sdk.Coins) bool {
+func (k *Keeper) IsDenomExist(ctx sdk.Context, coins sdk.Coins) bool {
 	if coins.Empty() {
 		return false
 	}
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
-	for i := 0; i < coins.Len(); i++ {
-		if !store.Has([]byte(coins[i].Denom)) {
+	for _, v := range coins {
+		v := v
+		if !store.Has([]byte(v.Denom)) {
 			return false
 		}
 	}
@@ -181,7 +192,7 @@ func (k Keeper) IsDenomExist(ctx sdk.Context, coins sdk.Coins) bool {
 }
 
 // Creates a new fungible token with given supply and denom for FungibleTokenCreationPrice
-func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, denom string, amount int64) error {
+func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, denom string, amount int64) error {
 	logger := ctx.Logger()
 
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
@@ -214,17 +225,18 @@ func (k Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, den
 func (k *Keeper) RegisterBasicDenoms(ctx sdk.Context) {
 	ft := FungibleToken{Creator: []byte{}, Denom: types.DefaultTokenDenom, EmissionAmount: 1}
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
+
 	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
 
 // Registers fungible token for prevent double creation
-func (k Keeper) registerFungibleTokensCurrency(ctx sdk.Context, ft FungibleToken) {
+func (k *Keeper) registerFungibleTokensCurrency(ctx sdk.Context, ft FungibleToken) {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
 
 // Transfers amount of fungible tokens from one account to another
-func (k Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipient sdk.AccAddress, denom string, amount int64) error {
+func (k *Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipient sdk.AccAddress, denom string, amount int64) error {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	if !store.Has([]byte(denom)) {
 		return fmt.Errorf("unknown currency")
@@ -236,7 +248,7 @@ func (k Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipient
 	return nil
 }
 
-func (k Keeper) GetFungibleToken(ctx sdk.Context, name string) (*FungibleToken, error) {
+func (k *Keeper) GetFungibleToken(ctx sdk.Context, name string) (*FungibleToken, error) {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	if !store.Has([]byte(name)) {
 		return nil, fmt.Errorf("could not find Fungible Token with name %s", name)
@@ -250,12 +262,12 @@ func (k Keeper) GetFungibleToken(ctx sdk.Context, name string) (*FungibleToken, 
 }
 
 // Get an iterator over all Fungible Tokens
-func (k Keeper) GetFungibleTokensIterator(ctx sdk.Context) sdk.Iterator {
+func (k *Keeper) GetFungibleTokensIterator(ctx sdk.Context) sdk.Iterator {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	return sdk.KVStorePrefixIterator(store, nil)
 }
 
-func (k Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddress, denom string, amount int64) error {
+func (k *Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddress, denom string, amount int64) error {
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
 	if !store.Has([]byte(denom)) {
 		return fmt.Errorf("unknown currency")
@@ -266,4 +278,22 @@ func (k Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddress
 		return fmt.Errorf("failed to burn fungible tokens")
 	}
 	return nil
+}
+
+func (k *Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.AccAddress) error {
+	token, err := k.GetNFT(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to GetNFT: %v", err)
+	}
+
+	if token.IsOnSale() {
+		return fmt.Errorf("failed to transferNFT: NFT is on sale")
+	}
+
+	if !token.Owner.Equals(sender) {
+		return fmt.Errorf("%s is not the owner of NFT #%s", sender.String(), id)
+	}
+	token.Owner = recipient
+
+	return k.UpdateNFT(ctx, token)
 }

@@ -45,7 +45,7 @@ func GetCmdNFT(queryRoute string, cdc *codec.Codec) *cobra.Command {
 				return nil
 			}
 
-			var out types.NFT
+			var out types.NFTInfo
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
 		},

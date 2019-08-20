@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
+	"github.com/dgamingfoundation/cosmos-sdk/x/nft/exported"
 )
 
 type FungibleToken struct {
@@ -140,4 +141,42 @@ TimeOfLastBid: %v`, lot.LastBid.Bid, lot.LastBid.TimeCreated))
 	}
 
 	return base
+}
+
+// copy of data got from exported/nft interface
+type NFTMetaData struct {
+	ID       string         `json:"id"`
+	Owner    sdk.AccAddress `json:"owner"`
+	TokenURI string         `json:"token_uri"`
+}
+
+func (d NFTMetaData) String() string {
+	return strings.TrimSpace(fmt.Sprintf(`ID: %s
+Owner: %s
+TokenURI: %s`, d.ID, d.Owner, d.TokenURI))
+}
+
+func NewNFTMetaData(token exported.NFT) *NFTMetaData {
+	return &NFTMetaData{
+		ID:       token.GetID(),
+		Owner:    token.GetOwner(),
+		TokenURI: token.GetTokenURI(),
+	}
+}
+
+type NFTInfo struct {
+	MPNFTInfo    *NFT `json:"nft_mp_info"`
+	*NFTMetaData `json:"nft_meta_data"`
+}
+
+func (i NFTInfo) String() string {
+	return strings.TrimSpace(fmt.Sprintf(`MarketPlaceInfo: %s
+MetaData: %s`, i.MPNFTInfo, i.NFTMetaData))
+}
+
+func NewNFTInfo(nft *NFT, token exported.NFT) *NFTInfo {
+	return &NFTInfo{
+		MPNFTInfo:   nft,
+		NFTMetaData: NewNFTMetaData(token),
+	}
 }

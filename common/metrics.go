@@ -15,6 +15,7 @@ const (
 	PrometheusValueAccepted                  = "Accepted"
 	PrometheusValueCommon                    = "Common"
 	PrometheusValueMsgMintNFT                = "MsgMintNFT"
+	PrometheusValueMsgBurnNFT                = "MsgBurnNFT"
 	PrometheusValueMsgPutNFTOnMarket         = "MsgPutNFTOnMarket"
 	PrometheusValueMsgBuyNFT                 = "MsgBuyNFT"
 	PrometheusValueMsgTransferNFT            = "MsgTransferNFT"
@@ -22,6 +23,12 @@ const (
 	PrometheusValueMsgTransferFungibleTokens = "MsgTransferFungibleTokens"
 	PrometheusValueMsgUpdateNFTParams        = "MsgUpdateNFTParams"
 	PrometheusValueMsgBurnFT                 = "MsgBurnFT"
+	PrometheusValueMsgPutNFTOnAuction        = "MsgPutNFTOnAuction"
+	PrometheusValueMsgRemoveNFTFromAuction   = "MsgRemoveNFTFromAuction"
+	PrometheusValueMsgRemoveNFTFromMarket    = "MsgRemoveNFTFromMarket"
+	PrometheusValueMsgFinishAuction          = "MsgFinishAuction"
+	PrometheusValueMsgMakeBidOnAuction       = "MsgMakeBidOnAuction"
+	PrometheusValueMsgBuyoutFromAuction      = "MsgBuyoutFromAuction"
 )
 
 func NewPrometheusMsgMetrics(module string) *MsgMetrics {

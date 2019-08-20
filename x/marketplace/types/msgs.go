@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
@@ -266,9 +268,21 @@ type NFTParam struct {
 	Value string `json:"value"`
 }
 
+type NFTParams []NFTParam
+
+func (p NFTParams) String() string {
+	out := make([]string, 0)
+	for _, v := range p {
+		v := v
+		out = append(out,
+			strings.TrimSpace(fmt.Sprintf(`Key: %s; Value: %s`, v.Key, v.Value)))
+	}
+	return strings.Join(out, "\n")
+}
+
 type MsgUpdateNFTParams struct {
 	Owner   sdk.AccAddress `json:"owner"`
-	Params  []NFTParam     `json:"params"`
+	Params  NFTParams      `json:"params"`
 	TokenID string         `json:"token_id"`
 }
 

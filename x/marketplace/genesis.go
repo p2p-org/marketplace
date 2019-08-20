@@ -35,7 +35,7 @@ func DefaultGenesisState() GenesisState {
 	}
 }
 
-func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.ValidatorUpdate {
+func InitGenesis(ctx sdk.Context, keeper *Keeper, data GenesisState) []abci.ValidatorUpdate {
 	for _, record := range data.NFTRecords {
 		if err := keeper.MintNFT(ctx, record); err != nil {
 			panic(fmt.Sprintf("failed to InitGenesis: %v", err))
@@ -48,7 +48,7 @@ func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.Valid
 	return []abci.ValidatorUpdate{}
 }
 
-func ExportGenesis(ctx sdk.Context, k Keeper) GenesisState {
+func ExportGenesis(ctx sdk.Context, k *Keeper) GenesisState {
 	var (
 		records    []*NFT
 		currencies []FungibleToken

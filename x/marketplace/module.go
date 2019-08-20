@@ -9,6 +9,7 @@ import (
 	"github.com/dgamingfoundation/cosmos-sdk/codec"
 	"github.com/dgamingfoundation/cosmos-sdk/types/module"
 	"github.com/dgamingfoundation/cosmos-sdk/x/bank"
+	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/cli"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/rest"
 
@@ -66,16 +67,18 @@ func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 type AppModule struct {
 	AppModuleBasic
-	keeper     Keeper
+	keeper     *Keeper
+	nftKeeper  *nft.Keeper
 	coinKeeper bank.Keeper
 }
 
 // NewAppModule creates a new AppModule Object
-func NewAppModule(k Keeper, bankKeeper bank.Keeper) AppModule {
+func NewAppModule(k *Keeper, bankKeeper bank.Keeper, nftKeeper *nft.Keeper) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
 		keeper:         k,
 		coinKeeper:     bankKeeper,
+		nftKeeper:      nftKeeper,
 	}
 }
 
@@ -97,7 +100,7 @@ func (am AppModule) QuerierRoute() string {
 }
 
 func (am AppModule) NewQuerierHandler() sdk.Querier {
-	return NewQuerier(am.keeper)
+	return NewQuerier(am.keeper, am.nftKeeper)
 }
 
 func (am AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {

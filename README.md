@@ -36,7 +36,7 @@ $ mpcli query account $(mpcli keys show user1 -a)
 To mint an NFT for that user:
 
 ```bash
-mpcli tx marketplace mint $(uuidgen) name description image token_uri --from user1
+mpcli tx nft mint name $(uuidgen) $(mpcli keys show user1 -a) --from user1 
 ```
 
 The token is **not** put on the market when minted.
@@ -44,7 +44,7 @@ The token is **not** put on the market when minted.
 To transfer a token from user1 to user2:
 
 ```bash
-mpcli tx marketplace transfer 686769b1-9395-4821-8a9e-36008ad4ca7c cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn --from user1
+mpcli tx nft transfer cosmos16y2vaas25ea8n353tfve45rwvt4sx0gl627pzn $(mpcli keys show user1 -a) name 686769b1-9395-4821-8a9e-36008ad4ca7c --from user1
 ```
 
 To put a token on market (to make it purchasable by anybody who offers the exact price you specified):

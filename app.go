@@ -91,9 +91,10 @@ type marketplaceApp struct {
 	slashingKeeper slashing.Keeper
 	distrKeeper    distr.Keeper
 	paramsKeeper   params.Keeper
-	nftKeeper      nft.Keeper
+	nftKeeper      *nft.Keeper
 
-	mpKeeper            marketplace.Keeper
+	mpKeeper *marketplace.Keeper
+
 	keyMP               *sdk.KVStoreKey
 	keyRegisterCurrency *sdk.KVStoreKey
 	keyAuction          *sdk.KVStoreKey
@@ -180,13 +181,13 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	)
 
 	// The NFTKeeper is the Keeper from the module NFTs.
-	app.nftKeeper = nft.NewKeeper(
+	newKeeper := nft.NewKeeper(
 		app.cdc,
 		app.keyNFT,
 	)
+	app.nftKeeper = &newKeeper
 
-	nftModule := nft.NewAppModule(app.nftKeeper)
-	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, &app.mpKeeper)
+	nftModule := nft.NewAppModule(newKeeper)
 
 	app.distrKeeper = distr.NewKeeper(
 		app.cdc,
@@ -228,8 +229,10 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
-		&app.nftKeeper,
+		app.nftKeeper,
 	)
+
+	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
 
 	app.mm = module.NewManager(
 		genaccounts.NewAppModule(app.accountKeeper),
@@ -240,7 +243,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
 		staking.NewAppModule(app.stakingKeeper, app.distrKeeper, app.accountKeeper, app.supplyKeeper),
 
-		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper),
+		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper, app.nftKeeper),
 		overriddenNFTModule,
 	)
 
@@ -312,6 +315,9 @@ func NewDefaultGenesisState() GenesisState {
 
 func (app *marketplaceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
+
+	// VERY important. registers default denoms (e.g. "token")
+	app.mpKeeper.RegisterBasicDenoms(ctx)
 
 	err := app.cdc.UnmarshalJSON(req.AppStateBytes, &genesisState)
 	if err != nil {

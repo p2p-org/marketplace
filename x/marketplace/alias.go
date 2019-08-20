@@ -27,6 +27,7 @@ type (
 	MsgRemoveNFTFromMarket = types.MsgRemoveNFTFromMarket
 	MsgBuyNFT              = types.MsgBuyNFT
 	NFT                    = types.NFT
+	NFTInfo                = types.NFTInfo
 	MsgUpdateNFTParams     = types.MsgUpdateNFTParams
 	FungibleToken          = types.FungibleToken
 

@@ -4,7 +4,7 @@ sleep_time=5
 
 echo "run FT test 03:"
 echo "Create an FT, then create an FT with the same denom."
-echo "Expected: and error."
+echo "Expected: an error."
 
 mpcli tx marketplace createFT fungible 577 --from user1 -y <<< '12345678' >/dev/null
 

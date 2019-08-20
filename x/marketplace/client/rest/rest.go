@@ -3,6 +3,9 @@ package rest
 import (
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
 
 	"github.com/dgamingfoundation/cosmos-sdk/client/flags"
 
@@ -30,12 +33,27 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens", storeName), fungibleTokensHandler(cliCtx, storeName)).Methods("GET")
 	r.HandleFunc(fmt.Sprintf("/%s/fungible_tokens/{%s}", storeName, restName), fungibleTokenHandler(cliCtx, storeName)).Methods("GET")
 
+	r.HandleFunc(fmt.Sprintf("/%s/auction_lots", storeName), auctionLotsHandler(cliCtx, storeName)).Methods("GET")
+	r.HandleFunc(fmt.Sprintf("/%s/auction_lots/{%s}", storeName, restName), auctionLotHandler(cliCtx, storeName)).Methods("GET")
+
+	r.HandleFunc(fmt.Sprintf("/%s/mint", storeName), mintHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/transfer", storeName), transferHandler(cliCtx)).Methods("PUT")
+
 	r.HandleFunc(fmt.Sprintf("/%s/put_on_market", storeName), putOnMarketHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/buy", storeName), buyHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/update_params", storeName), updateParamsHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/remove_from_market", storeName), removeNFTFromMarketHandler(cliCtx)).Methods("PUT")
+
 	r.HandleFunc(fmt.Sprintf("/%s/create_ft", storeName), createFTHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/transfer_ft", storeName), transferFTHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/burn_ft", storeName), burnFTHandler(cliCtx)).Methods("PUT")
+
+	r.HandleFunc(fmt.Sprintf("/%s/put_on_auction", storeName), putOnAuctionHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/remove_from_auction", storeName), removeNFTFromAuctionHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/finish_auction", storeName), finishAuctionHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/bid_on_auction", storeName), bidOnAuctionHandler(cliCtx)).Methods("PUT")
+	r.HandleFunc(fmt.Sprintf("/%s/buyout_auction", storeName), buyoutAuctionHandler(cliCtx)).Methods("PUT")
+
 }
 
 // --------------------------------------------------------------------------------------
@@ -84,6 +102,53 @@ func broadcastTransaction(
 }
 
 // --------------------------------------------------------------------------------------
+// Mint NFT
+
+type MintReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	TokenID    string `json:"token_id"`
+	TokenDenom string `json:"token_denom"`
+	TokenURI   string `json:"token_uri"`
+}
+
+func mintHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req MintReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		// create the message
+		msg := nft.NewMsgMintNFT(owner, owner, req.TokenID, req.TokenDenom, req.TokenURI)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
 // Transfer NFT
 
 type TransferReq struct {
@@ -92,8 +157,48 @@ type TransferReq struct {
 	Name     string `json:"name"`
 	Password string `json:"password"`
 
-	TokenID   string `json:"token_id"`
-	Recipient string `json:"recipient"`
+	TokenID    string `json:"token_id"`
+	TokenDenom string `json:"token_denom"`
+	Recipient  string `json:"recipient"`
+}
+
+func transferHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req TransferReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		recipient, err := sdk.AccAddressFromBech32(req.Recipient)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// create the message
+		msg := nft.NewMsgTransferNFT(owner, recipient, req.TokenDenom, req.TokenID)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
 }
 
 // --------------------------------------------------------------------------------------
@@ -164,7 +269,7 @@ type BuyReq struct {
 
 	TokenID     string `json:"token_id"`
 	Beneficiary string `json:"beneficiary"`
-	Commission  string `json:"commission"`
+	Commission  string `json:"commission,omitempty"`
 }
 
 func buyHandler(cliCtx context.CLIContext) http.HandlerFunc {
@@ -274,7 +379,57 @@ func updateParamsHandler(cliCtx context.CLIContext) http.HandlerFunc {
 }
 
 // --------------------------------------------------------------------------------------
+// Remove NFT from market
+
+type RemoveNFTFromMarketReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	TokenID string `json:"token_id"`
+}
+
+func removeNFTFromMarketHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req RemoveNFTFromMarketReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		// create the message
+		msg := types.NewMsgRemoveNFTFromMarket(owner, req.TokenID)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
 // Create FT
+
+// --------------------------------------------------------------------------------------
+//
+// FT Handlers
+//
+// --------------------------------------------------------------------------------------
 
 type CreateFTReq struct {
 	BaseReq rest.BaseReq `json:"base_req"`
@@ -417,6 +572,268 @@ func burnFTHandler(cliCtx context.CLIContext) http.HandlerFunc {
 
 // --------------------------------------------------------------------------------------
 //
+// Auction Handlers
+//
+// --------------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------------
+// Put NFT on Auction
+
+type PutOnAuctionReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	TokenID      string `json:"token_id"`
+	Beneficiary  string `json:"beneficiary"`
+	OpeningPrice string `json:"opening_price"`
+	BuyoutPrice  string `json:"buyout_price,omitempty"`
+	Duration     string `json:"duration"`
+}
+
+func putOnAuctionHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req PutOnAuctionReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		beneficiary, err := sdk.AccAddressFromBech32(req.Beneficiary)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		coins, err := sdk.ParseCoins(req.OpeningPrice)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		buyout, err := sdk.ParseCoins(req.BuyoutPrice)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		dur, err := time.ParseDuration(req.Duration)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		// create the message
+		msg := types.NewMsgPutNFTOnAuction(owner, beneficiary, req.TokenID, coins, buyout, time.Now().UTC().Add(dur))
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+// Remove NFT from auction
+
+type RemoveNFTFromAuctionReq RemoveNFTFromMarketReq
+
+func removeNFTFromAuctionHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req RemoveNFTFromAuctionReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		// create the message
+		msg := types.NewMsgRemoveNFTFromAuction(owner, req.TokenID)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+// Finish NFT auction
+
+type FinishAuctionReq RemoveNFTFromMarketReq
+
+func finishAuctionHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req FinishAuctionReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		// create the message
+		msg := types.NewMsgFinishAuction(owner, req.TokenID)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+// Bid on auction NFT
+
+type BidOnAuctionReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	TokenID     string `json:"token_id"`
+	Beneficiary string `json:"beneficiary"`
+	Bid         string `json:"bid"`
+	Commission  string `json:"commission,omitempty"`
+}
+
+func bidOnAuctionHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req BidOnAuctionReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		beneficiary, err := sdk.AccAddressFromBech32(req.Beneficiary)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		bid, err := sdk.ParseCoins(req.Bid)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// create the message
+		msg := types.NewMsgMakeBidOnAuction(owner, beneficiary, req.TokenID, bid, req.Commission)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+// Buyout auction NFT
+
+type BuyoutAuctionReq struct {
+	BaseReq rest.BaseReq `json:"base_req"`
+
+	Name     string `json:"name"`
+	Password string `json:"password"`
+
+	TokenID     string `json:"token_id"`
+	Beneficiary string `json:"beneficiary"`
+	Commission  string `json:"commission,omitempty"`
+}
+
+func buyoutAuctionHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req BuyoutAuctionReq
+		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
+			return
+		}
+
+		baseReq := req.BaseReq.Sanitize()
+		if !baseReq.ValidateBasic(w) {
+			return
+		}
+
+		owner, err := sdk.AccAddressFromBech32(req.BaseReq.From)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		cliCtx.FromName = req.Name
+		cliCtx.FromAddress = owner
+
+		beneficiary, err := sdk.AccAddressFromBech32(req.Beneficiary)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// create the message
+		msg := types.NewMsgBuyOutOnAuction(owner, beneficiary, req.TokenID, req.Commission)
+		err = msg.ValidateBasic()
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		broadcastTransaction(cliCtx, w, msg, req.BaseReq, req.Name, req.Password)
+	}
+}
+
+// --------------------------------------------------------------------------------------
+//
 // Query Handlers
 //
 // --------------------------------------------------------------------------------------
@@ -466,6 +883,31 @@ func fungibleTokenHandler(cliCtx context.CLIContext, storeName string) http.Hand
 			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func auctionLotsHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/auction_lots", storeName), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
+			return
+		}
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func auctionLotHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		nftID := vars[restName]
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/auction_lot/%s", storeName, nftID), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
+			return
+		}
+
 		rest.PostProcessResponse(w, cliCtx, res)
 	}
 }

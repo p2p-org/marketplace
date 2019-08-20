@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
+	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -19,13 +20,13 @@ const (
 )
 
 // NewQuerier is the module level router for state queries
-func NewQuerier(keeper Keeper) sdk.Querier {
+func NewQuerier(keeper *Keeper, nftKeeper *nft.Keeper) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) (res []byte, err sdk.Error) {
 		switch path[0] {
 		case QueryNFT:
-			return queryNFT(ctx, path[1:], req, keeper)
+			return queryNFT(ctx, path[1:], req, keeper, nftKeeper)
 		case QueryNFTs:
-			return queryNFTs(ctx, req, keeper)
+			return queryNFTs(ctx, req, keeper, nftKeeper)
 		case QueryFungibleToken:
 			return queryFungibleToken(ctx, path[1:], req, keeper)
 		case QueryFungibleTokens:
@@ -41,33 +42,44 @@ func NewQuerier(keeper Keeper) sdk.Querier {
 }
 
 // nolint: unparam
-func queryNFT(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryNFT(ctx sdk.Context, path []string, req abci.RequestQuery, keeper *Keeper, nftKeeper *nft.Keeper) ([]byte, sdk.Error) {
 	id := path[0]
-	value, err := keeper.GetNFT(ctx, id)
+	nftMp, err := keeper.GetNFT(ctx, id)
 	if err != nil {
-		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find NFT with id %s: %v", id, err))
+		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find NFT in mpKeeper with id %s: %v", id, err))
 	}
 
+	token, err := nftKeeper.GetNFT(ctx, nftMp.Denom, nftMp.ID)
+	if err != nil {
+		return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find NFT in NFTKeeper with id %s: %v", id, err))
+	}
+
+	value := types.NewNFTInfo(nftMp, token)
 	bz := keeper.cdc.MustMarshalJSON(value)
 	return bz, nil
 }
 
-func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryNFTs(ctx sdk.Context, req abci.RequestQuery, keeper *Keeper, nftKeeper *nft.Keeper) ([]byte, sdk.Error) {
 	var (
 		nfts     types.QueryResNFTs
 		iterator = keeper.GetNFTsIterator(ctx)
 	)
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
-		var nft types.NFT
-		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &nft)
-		nfts.NFTs = append(nfts.NFTs, &nft)
+		var nftMp types.NFT
+		keeper.cdc.MustUnmarshalJSON(iterator.Value(), &nftMp)
+		token, err := nftKeeper.GetNFT(ctx, nftMp.Denom, nftMp.ID)
+		if err != nil {
+			return []byte{}, sdk.ErrUnknownRequest(fmt.Sprintf("could not find NFT in NFTKeeper with id %s: %v", nftMp.ID, err))
+		}
+		value := types.NewNFTInfo(&nftMp, token)
+		nfts.NFTs = append(nfts.NFTs, value)
 	}
 
 	return keeper.cdc.MustMarshalJSON(nfts), nil
 }
 
-func queryFungibleToken(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryFungibleToken(ctx sdk.Context, path []string, req abci.RequestQuery, keeper *Keeper) ([]byte, sdk.Error) {
 	name := path[0]
 	value, err := keeper.GetFungibleToken(ctx, name)
 	if err != nil {
@@ -78,7 +90,7 @@ func queryFungibleToken(ctx sdk.Context, path []string, req abci.RequestQuery, k
 	return bz, nil
 }
 
-func queryFungibleTokens(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryFungibleTokens(ctx sdk.Context, req abci.RequestQuery, keeper *Keeper) ([]byte, sdk.Error) {
 	var fts types.QueryResFungibleTokens
 	iterator := keeper.GetFungibleTokensIterator(ctx)
 	defer iterator.Close()
@@ -92,7 +104,7 @@ func queryFungibleTokens(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) 
 	return keeper.cdc.MustMarshalJSON(fts), nil
 }
 
-func queryAuctionLot(ctx sdk.Context, path []string, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryAuctionLot(ctx sdk.Context, path []string, req abci.RequestQuery, keeper *Keeper) ([]byte, sdk.Error) {
 	id := path[0]
 	value, err := keeper.GetAuctionLot(ctx, id)
 	if err != nil {
@@ -103,7 +115,7 @@ func queryAuctionLot(ctx sdk.Context, path []string, req abci.RequestQuery, keep
 	return bz, nil
 }
 
-func queryAuctionLots(ctx sdk.Context, req abci.RequestQuery, keeper Keeper) ([]byte, sdk.Error) {
+func queryAuctionLots(ctx sdk.Context, req abci.RequestQuery, keeper *Keeper) ([]byte, sdk.Error) {
 	var (
 		lots     types.QueryResAuctionLots
 		iterator = keeper.GetAuctionLotsIterator(ctx)

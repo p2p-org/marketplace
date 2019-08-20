@@ -2,17 +2,18 @@
 
 sleep_time=5
 
-echo "run test 09:"
-echo "Create an NFT and put it on market. user2 buys this NFT, but has insufficient funds."
-echo "Expected: error."
+echo "run test 13:"
+echo "Create an NFT and put it on market. user2 tries to remove it from market."
+echo "Expected: error, NFT remains on market."
 
 uu=$(uuidgen)
 
-mpcli tx marketplace mint $uu name description image token_uri --from user1 -y <<< '12345678' >/dev/null
+user1_id=$(mpcli keys show user1 -a)
+mpcli tx nft mint name $uu $user1_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 
-nft_id=$(mpcli query marketplace nfts | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
+nft_id=$(mpcli query marketplace nft $uu | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
 
 if [[ -z "$nft_id" ]] || [[ $uu != $nft_id ]]
 then
@@ -26,22 +27,22 @@ sleep $sleep_time
 seller_id=$(mpcli keys show sellerBeneficiary -a)
 buyer_id=$(mpcli keys show buyerBeneficiary -a)
 
-mpcli tx marketplace put_on_market $nft_id 1650token $seller_id --from user1 -y <<< '12345678' >/dev/null
+mpcli tx marketplace put_on_market $nft_id 650token $seller_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
-echo "NFT put on market for 1650token"
+echo "NFT put on market for 650token"
 
-mpcli tx marketplace buy $nft_id $buyer_id --from user2 -y <<< '12345678' >/dev/null
+mpcli tx marketplace remove_from_market $nft_id --from user2 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
-echo "NFT buy attempt"
+echo "NFT remove attempt"
 
 new_owner_id=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
 user1_id=$(mpcli keys show user1 -a)
 user2_id=$(mpcli keys show user2 -a)
-is_on_sale=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"on_sale\": )(.*)(?=.*)' -m 1 | tr -d ,)
+status=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"status\": \")(.*)(?=\".*)' -m 1 | tr -d ,)
 
-if [[ $is_on_sale != "true" ]]
+if [[ $status != "on_market" ]]
 then
       echo "test FAILURE: existing NFT is not on sale"
       exit 1
@@ -49,7 +50,7 @@ fi
 
 if [[ $new_owner_id != $user1_id ]]
 then
-      echo "test FAILURE: NFT was bought"
+      echo "test FAILURE: NFT was not removed"
       exit 1
 fi
 
@@ -67,5 +68,5 @@ if [[ $balance_u1 != 1000 ]] || [[ $balance_u2 != 1000 ]] || [[ $balance_sb != 1
 then
       echo "FAILURE: wrong numbers"
 else
-      echo "SUCCESS: NFT was not bought"
+      echo "SUCCESS: NFT remains on market"
 fi
