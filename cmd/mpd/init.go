@@ -16,11 +16,11 @@ import (
 	"github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/dgamingfoundation/cosmos-sdk/client"
+	"github.com/dgamingfoundation/cosmos-sdk/codec"
+	"github.com/dgamingfoundation/cosmos-sdk/server"
+	"github.com/dgamingfoundation/cosmos-sdk/types/module"
+	"github.com/dgamingfoundation/cosmos-sdk/x/genutil"
 )
 
 const (

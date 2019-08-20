@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/types/time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 )
 

@@ -6,14 +6,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 
-	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/dgamingfoundation/cosmos-sdk/codec"
+	"github.com/dgamingfoundation/cosmos-sdk/types/module"
+	"github.com/dgamingfoundation/cosmos-sdk/x/bank"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/cli"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/rest"
 
-	"github.com/cosmos/cosmos-sdk/client/context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/dgamingfoundation/cosmos-sdk/client/context"
+	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 

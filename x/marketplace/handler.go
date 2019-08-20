@@ -6,7 +6,7 @@ import (
 
 	"github.com/dgamingfoundation/marketplace/common"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"

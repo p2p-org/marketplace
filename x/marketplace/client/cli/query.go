@@ -3,9 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/dgamingfoundation/cosmos-sdk/client"
+	"github.com/dgamingfoundation/cosmos-sdk/client/context"
+	"github.com/dgamingfoundation/cosmos-sdk/codec"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 )

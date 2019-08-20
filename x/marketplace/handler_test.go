@@ -9,7 +9,7 @@ import (
 
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
 	"github.com/magiconair/properties/assert"
 )
 
