@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"os"
 
-	bam "github.com/dgamingfoundation/cosmos-sdk/baseapp"
-	"github.com/dgamingfoundation/cosmos-sdk/codec"
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
-	"github.com/dgamingfoundation/cosmos-sdk/types/module"
-	"github.com/dgamingfoundation/cosmos-sdk/x/auth"
-	"github.com/dgamingfoundation/cosmos-sdk/x/bank"
-	distr "github.com/dgamingfoundation/cosmos-sdk/x/distribution"
-	"github.com/dgamingfoundation/cosmos-sdk/x/genaccounts"
-	"github.com/dgamingfoundation/cosmos-sdk/x/genutil"
-	"github.com/dgamingfoundation/cosmos-sdk/x/mint"
-	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
-	"github.com/dgamingfoundation/cosmos-sdk/x/params"
-	"github.com/dgamingfoundation/cosmos-sdk/x/slashing"
-	"github.com/dgamingfoundation/cosmos-sdk/x/staking"
-	"github.com/dgamingfoundation/cosmos-sdk/x/supply"
+	bam "github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+	"github.com/cosmos/cosmos-sdk/x/bank"
+	distr "github.com/cosmos/cosmos-sdk/x/distribution"
+	"github.com/cosmos/cosmos-sdk/x/genaccounts"
+	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/cosmos/cosmos-sdk/x/mint"
+	"github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/cosmos/cosmos-sdk/x/params"
+	"github.com/cosmos/cosmos-sdk/x/slashing"
+	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
@@ -241,7 +241,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
 		distr.NewAppModule(app.distrKeeper, app.supplyKeeper),
 		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
-		staking.NewAppModule(app.stakingKeeper, app.distrKeeper, app.accountKeeper, app.supplyKeeper),
+		staking.NewAppModule(app.stakingKeeper, app.accountKeeper, app.supplyKeeper),
 
 		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper, app.nftKeeper),
 		overriddenNFTModule,

@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/common"
-
-	"github.com/tendermint/tendermint/types/time"
-
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/tendermint/tendermint/types/time"
 )
 
 func handleMsgPutNFTOnAuction(ctx sdk.Context, k *Keeper, msg types.MsgPutNFTOnAuction) sdk.Result {

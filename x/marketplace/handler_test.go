@@ -3,14 +3,12 @@ package marketplace_test
 import (
 	"testing"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
-
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
-
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
-	"github.com/magiconair/properties/assert"
 )
 
 func TestGetCommission(t *testing.T) {

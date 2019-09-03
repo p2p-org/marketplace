@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/dgamingfoundation/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/codec"
 )
 
 var ModuleCdc = codec.New()

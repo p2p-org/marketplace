@@ -3,18 +3,16 @@ package marketplace
 import (
 	"encoding/json"
 
-	"github.com/gorilla/mux"
-	"github.com/spf13/cobra"
-
-	"github.com/dgamingfoundation/cosmos-sdk/codec"
-	"github.com/dgamingfoundation/cosmos-sdk/types/module"
-	"github.com/dgamingfoundation/cosmos-sdk/x/bank"
-	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
+	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/cli"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/rest"
-
-	"github.com/dgamingfoundation/cosmos-sdk/client/context"
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
+	"github.com/gorilla/mux"
+	"github.com/spf13/cobra"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -66,6 +64,7 @@ func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
 }
 
 type AppModule struct {
+	module.AppModuleSimulation
 	AppModuleBasic
 	keeper     *Keeper
 	nftKeeper  *nft.Keeper

@@ -6,8 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/server"
+	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/x/genutil"
 	mpcfg "github.com/dgamingfoundation/marketplace/x/marketplace/config"
-
 	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,12 +19,6 @@ import (
 	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/dgamingfoundation/cosmos-sdk/client"
-	"github.com/dgamingfoundation/cosmos-sdk/codec"
-	"github.com/dgamingfoundation/cosmos-sdk/server"
-	"github.com/dgamingfoundation/cosmos-sdk/types/module"
-	"github.com/dgamingfoundation/cosmos-sdk/x/genutil"
 )
 
 const (

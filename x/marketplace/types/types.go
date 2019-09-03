@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
-	"github.com/dgamingfoundation/cosmos-sdk/x/nft/exported"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/nft/exported"
 )
 
 type FungibleToken struct {

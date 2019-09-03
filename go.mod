@@ -3,7 +3,7 @@ module github.com/dgamingfoundation/marketplace
 go 1.12
 
 require (
-	github.com/dgamingfoundation/cosmos-sdk v0.0.0-20190815130634-d34060ae8455
+	github.com/cosmos/cosmos-sdk v0.28.2-0.20190827131926-5aacf454e1b6
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.0

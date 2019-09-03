@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/template"
 
-	mptypes "github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 )
 
 var configTemplate *template.Template
@@ -25,7 +25,7 @@ func init() {
 
 func DefaultMPServerConfig() *MPServerConfig {
 	return &MPServerConfig{
-		MaximumBeneficiaryCommission: mptypes.DefaultMaximumBeneficiaryCommission,
+		MaximumBeneficiaryCommission: types.DefaultMaximumBeneficiaryCommission,
 	}
 }
 

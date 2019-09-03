@@ -3,18 +3,15 @@ package marketplace
 import (
 	"fmt"
 
-	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
-
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/cosmos/cosmos-sdk/x/distribution"
+	"github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/dgamingfoundation/marketplace/common"
-
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
-
-	"github.com/dgamingfoundation/cosmos-sdk/codec"
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
-	"github.com/dgamingfoundation/cosmos-sdk/x/bank"
-	"github.com/dgamingfoundation/cosmos-sdk/x/distribution"
-	"github.com/dgamingfoundation/cosmos-sdk/x/staking"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
+	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	pl "github.com/prometheus/common/log"
 )
 
@@ -45,6 +42,7 @@ func NewKeeper(
 	msgMetr *common.MsgMetrics,
 	nftKeeper *nft.Keeper,
 ) *Keeper {
+
 	return &Keeper{
 		coinKeeper:               coinKeeper,
 		stakingKeeper:            stakingKeeper,

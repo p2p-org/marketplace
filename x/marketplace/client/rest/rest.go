@@ -5,18 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgamingfoundation/cosmos-sdk/x/nft"
-
-	"github.com/dgamingfoundation/cosmos-sdk/client/flags"
-
-	"github.com/dgamingfoundation/cosmos-sdk/x/auth"
-
-	"github.com/dgamingfoundation/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/rest"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	"github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
-
-	sdk "github.com/dgamingfoundation/cosmos-sdk/types"
-	"github.com/dgamingfoundation/cosmos-sdk/types/rest"
-	"github.com/dgamingfoundation/cosmos-sdk/x/auth/client/utils"
 
 	"github.com/gorilla/mux"
 )
