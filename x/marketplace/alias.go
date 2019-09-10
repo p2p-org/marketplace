@@ -40,4 +40,6 @@ type (
 	MsgCreateFungibleToken    = types.MsgCreateFungibleToken
 	MsgTransferFungibleTokens = types.MsgTransferFungibleTokens
 	MsgBurnFungibleToken      = types.MsgBurnFungibleTokens
+	MsgMakeOffer              = types.MsgMakeOffer
+	MsgAcceptOffer            = types.MsgAcceptOffer
 )

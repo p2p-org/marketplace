@@ -39,6 +39,8 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdMakeBidOnAuction(cdc),
 		GetCmdBuyoutFromAuction(cdc),
 		GetCmdBurnFungibleTokens(cdc),
+		GetCmdMakeOffer(cdc),
+		GetCmdAcceptOffer(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -376,4 +378,67 @@ func GetCmdBurnFungibleTokens(cdc *codec.Codec) *cobra.Command {
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
+}
+
+func GetCmdMakeOffer(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "offer [token_id] [price] [beneficiary]",
+		Short: "offer a price for an NFT that is not currently on sale",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			beneficiary, err := sdk.AccAddressFromBech32(args[2])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			price, err := sdk.ParseCoins(args[1])
+			if err != nil {
+				return err
+			}
+
+			commission := viper.GetString(types.FlagBeneficiaryCommission)
+			msg := types.NewMsgMakeOffer(cliCtx.GetFromAddress(), beneficiary, price, args[0], commission)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
+		"beneficiary fee, if left blank will be set to default")
+	return cmd
+}
+
+func GetCmdAcceptOffer(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "accept_offer [token_id] [offer_id] [beneficiary]",
+		Short: "accept an offer",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			beneficiary, err := sdk.AccAddressFromBech32(args[2])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			tokenID, offerID := args[0], args[1]
+
+			commission := viper.GetString(types.FlagBeneficiaryCommission)
+			msg := types.NewMsgAcceptOffer(cliCtx.GetFromAddress(), beneficiary, tokenID, offerID, commission)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
+		"beneficiary fee, if left blank will be set to default")
+	return cmd
 }

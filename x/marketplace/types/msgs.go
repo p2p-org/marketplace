@@ -16,7 +16,7 @@ import (
 
 type MsgPutNFTOnMarket struct {
 	Owner sdk.AccAddress `json:"owner"`
-	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
+	// Beneficiary is the cosmos user who gets the commission for this transaction.
 	Beneficiary sdk.AccAddress `json:"beneficiary"`
 	TokenID     string         `json:"token_id"`
 	Price       sdk.Coins      `json:"price"`
@@ -374,7 +374,7 @@ func (m MsgBurnFungibleTokens) GetSigners() []sdk.AccAddress {
 
 type MsgPutNFTOnAuction struct {
 	Owner sdk.AccAddress `json:"owner"`
-	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
+	// Beneficiary is the cosmos user who gets the commission for this transaction.
 	Beneficiary  sdk.AccAddress `json:"beneficiary"`
 	TokenID      string         `json:"token_id"`
 	OpeningPrice sdk.Coins      `json:"opening_price"`
@@ -483,7 +483,7 @@ func (m MsgRemoveNFTFromAuction) GetSigners() []sdk.AccAddress {
 
 type MsgMakeBidOnAuction struct {
 	Bidder sdk.AccAddress `json:"bidder"`
-	// BuyerBeneficiary is the cosmos user who gets the commission for this transaction.
+	// Beneficiary is the cosmos user who gets the commission for this transaction.
 	BuyerBeneficiary      sdk.AccAddress `json:"buyer_beneficiary"`
 	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
 	TokenID               string         `json:"token_id"`
@@ -625,4 +625,112 @@ func (m MsgBuyoutOnAuction) GetSignBytes() []byte {
 // GetSigners defines whose signature is required
 func (m MsgBuyoutOnAuction) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Buyer}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgMakeOffer
+//
+// --------------------------------------------------------------------------
+
+type MsgMakeOffer struct {
+	Buyer                 sdk.AccAddress `json:"buyer"`
+	Price                 sdk.Coins      `json:"price"`
+	BuyerBeneficiary      sdk.AccAddress `json:"buyer_beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenID               string         `json:"token_id"`
+}
+
+func NewMsgMakeOffer(bidder, buyerBeneficiary sdk.AccAddress, price sdk.Coins, tokenID string, commission string) *MsgMakeOffer {
+	return &MsgMakeOffer{
+		Buyer:                 bidder,
+		Price:                 price,
+		BuyerBeneficiary:      buyerBeneficiary,
+		TokenID:               tokenID,
+		BeneficiaryCommission: commission,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgMakeOffer) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgMakeOffer) Type() string { return "make_offer" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgMakeOffer) ValidateBasic() sdk.Error {
+	if m.Buyer.Empty() {
+		return sdk.ErrInvalidAddress(m.Buyer.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgMakeOffer) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgMakeOffer) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Buyer}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgAcceptOffer
+//
+// --------------------------------------------------------------------------
+
+type MsgAcceptOffer struct {
+	Seller                sdk.AccAddress `json:"seller"`
+	SellerBeneficiary     sdk.AccAddress `json:"seller_beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenID               string         `json:"token_id"`
+	OfferID               string         `json:"offer_id"`
+}
+
+func NewMsgAcceptOffer(seller, sellerBeneficiary sdk.AccAddress, tokenID, offerID string, commission string) *MsgAcceptOffer {
+	return &MsgAcceptOffer{
+		Seller:                seller,
+		SellerBeneficiary:     sellerBeneficiary,
+		TokenID:               tokenID,
+		OfferID:               offerID,
+		BeneficiaryCommission: commission,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgAcceptOffer) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgAcceptOffer) Type() string { return "accept_offer" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgAcceptOffer) ValidateBasic() sdk.Error {
+	if m.Seller.Empty() {
+		return sdk.ErrInvalidAddress(m.Seller.String())
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgAcceptOffer) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgAcceptOffer) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Seller}
 }

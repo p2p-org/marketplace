@@ -81,6 +81,18 @@ To transfer some amount of fungible tokens:
 mpcli tx marketplace transferFT $(mpcli keys show user1 -a) fungible 500  --from user1
 ```
 
+Make an offer for an NFT that is not currently on sale:
+
+```
+mpcli tx marketplace offer TOKEN_ID 10token cosmos1j3zptzhjltjyrdn34vz0lvcwd86dl0nh86p65a --from user2
+```
+
+Accept the offer (offer ID can be found by running `mpcli query nft TOKEN_ID`):
+
+```
+mpcli tx marketplace accept_offer TOKEN_ID OFFER_ID cosmos1nglxddxs3w79fhv5j6ddtudkqn50zzg3p40kyw --from user1
+```
+
 ## Full scenario
 
 After running `./run.sh`, 4 users are created: `user1` (minter and seller), `user2` (buyer), `sellerBeneficiary` and `buyerBeneficiary` (each has 1000token coins in the beginning).

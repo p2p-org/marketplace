@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -29,6 +30,7 @@ type NFT struct {
 	Status            NFTStatus      `json:"status"`
 	SellerBeneficiary sdk.AccAddress `json:"seller_beneficiary"`
 	TimeCreated       time.Time      `json:"time_created"`
+	Offers            []*Offer       `json:"offers"`
 }
 
 func NewNFT(id string, denom string, owner sdk.AccAddress, price sdk.Coins) *NFT {
@@ -42,11 +44,19 @@ func NewNFT(id string, denom string, owner sdk.AccAddress, price sdk.Coins) *NFT
 }
 
 func (m NFT) String() string {
+	var offers []string
+	for _, offer := range m.Offers {
+		offerJSON, _ := json.Marshal(offer)
+		offers = append(offers, string(offerJSON))
+	}
 	return strings.TrimSpace(fmt.Sprintf(`ID: %s
 Owner: %s
 Denom: %s
 Price: %s
-Status: %v`, m.ID, m.Owner, m.Denom, m.Price, m.Status))
+Status: %v
+SellerBeneficiary: %s
+TimeCreated: %v
+Offers: %v`, m.ID, m.Owner, m.Denom, m.Price, m.Status, m.SellerBeneficiary, m.TimeCreated, offers))
 }
 
 func (m *NFT) GetPrice() sdk.Coins {
@@ -79,6 +89,28 @@ func (m *NFT) SetSellerBeneficiary(addr sdk.AccAddress) {
 
 func (m *NFT) GetTimeCreated() time.Time {
 	return m.TimeCreated
+}
+
+func (m *NFT) AddOffer(offer *Offer) {
+	m.Offers = append(m.Offers, offer)
+}
+
+func (m *NFT) GetOffer(id string) (*Offer, bool) {
+	for _, offer := range m.Offers {
+		if offer.ID == id {
+			return offer, true
+		}
+	}
+
+	return nil, false
+}
+
+type Offer struct {
+	ID                    string         `json:"id"`
+	Buyer                 sdk.AccAddress `json:"buyer"`
+	Price                 sdk.Coins      `json:"price"`
+	BuyerBeneficiary      sdk.AccAddress `json:"buyer_beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission"`
 }
 
 type AuctionBid struct {

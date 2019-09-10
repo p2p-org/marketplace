@@ -30,4 +30,6 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgBurnFungibleTokens{}, "marketplace/BurnFungibleTokens", nil)
 	cdc.RegisterConcrete(NFTMetaData{}, "marketplace/NFTMetaData", nil)
 	cdc.RegisterConcrete(NFTInfo{}, "marketplace/NFTInfo", nil)
+	cdc.RegisterConcrete(MsgMakeOffer{}, "marketplace/MakeOffer", nil)
+	cdc.RegisterConcrete(MsgAcceptOffer{}, "marketplace/AcceptOffer", nil)
 }

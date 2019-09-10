@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
@@ -39,6 +41,10 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgBuyoutOnAuction(ctx, keeper, msg)
 		case MsgBurnFungibleToken:
 			return handleMsgBurnFT(ctx, keeper, msg)
+		case MsgMakeOffer:
+			return handleMsgMakeOffer(ctx, keeper, msg)
+		case MsgAcceptOffer:
+			return handleMsgAcceptOffer(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
@@ -206,6 +212,115 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 			sdk.EventTypeMessage,
 			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMakeOffer)
+	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
+	}
+
+	if token.IsOnMarket() {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: token is already on the market")).Result()
+	}
+
+	token.AddOffer(&types.Offer{
+		ID:                    uuid.New().String(),
+		Price:                 msg.Price,
+		Buyer:                 msg.Buyer,
+		BuyerBeneficiary:      msg.BuyerBeneficiary,
+		BeneficiaryCommission: msg.BeneficiaryCommission,
+	})
+
+	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMakeOffer)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+			sdk.NewAttribute(types.AttributeKeyPrice, msg.Price.String()),
+			sdk.NewAttribute(types.AttributeKeyBuyer, msg.Buyer.String()),
+			sdk.NewAttribute(types.AttributeKeyBeneficiary, msg.BuyerBeneficiary.String()),
+			sdk.NewAttribute(types.AttributeKeyCommission, msg.BeneficiaryCommission),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgAcceptOffer)
+	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: %v", err)).Result()
+	}
+
+	if token.IsOnMarket() {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: token is already on the market")).Result()
+	}
+
+	offer, ok := token.GetOffer(msg.OfferID)
+	if !ok {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)).Result()
+	}
+
+	beneficiariesCommission := types.DefaultBeneficiariesCommission
+	parsed, err := strconv.ParseFloat(msg.BeneficiaryCommission, 64)
+	if err == nil {
+		beneficiariesCommission = parsed
+	}
+	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: beneficiary commission is too high")).Result()
+	}
+
+	priceAfterCommission, err := doNFTCommissions(
+		ctx,
+		mpKeeper,
+		offer.Buyer,
+		token.Owner,
+		offer.BuyerBeneficiary,
+		msg.SellerBeneficiary,
+		offer.Price,
+		beneficiariesCommission,
+	)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: failed to pay commissions: %v", err)).Result()
+	}
+
+	err = mpKeeper.coinKeeper.SendCoins(ctx, offer.Buyer, token.Owner, priceAfterCommission)
+	if err != nil {
+		return sdk.ErrInsufficientCoins("failed to AcceptOffer: buyer does not have enough coins").Result()
+	}
+
+	token.Owner = offer.Buyer
+	token.Offers = nil
+	token.SetSellerBeneficiary(sdk.AccAddress{})
+	token.SetStatus(types.NFTStatusDefault)
+
+	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgAcceptOffer)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+			sdk.NewAttribute(types.AttributeKeyCommission, msg.BeneficiaryCommission),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, offer.Buyer.String()),
 		),
 	})
 	return sdk.Result{Events: ctx.EventManager().Events()}
