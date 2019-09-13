@@ -243,6 +243,7 @@ func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
 			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyOfferID, token.Offers[len(token.Offers)-1].ID),
 			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
 			sdk.NewAttribute(types.AttributeKeyPrice, msg.Price.String()),
 			sdk.NewAttribute(types.AttributeKeyBuyer, msg.Buyer.String()),

@@ -19,4 +19,5 @@ var (
 	AttributeKeyRecipient    = "recipient"
 	AttributeKeySender       = "sender"
 	AttributeKeyNFTTokenURI  = "token_uri"
+	AttributeKeyOfferID      = "offer_id"
 )
