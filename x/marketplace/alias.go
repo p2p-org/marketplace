@@ -17,9 +17,10 @@ const (
 )
 
 var (
-	NewNFT        = types.NewNFT
-	ModuleCdc     = types.ModuleCdc
-	RegisterCodec = types.RegisterCodec
+	NewNFT          = types.NewNFT
+	ModuleCdc       = types.ModuleCdc
+	RegisterCodec   = types.RegisterCodec
+	EventKeyOfferID = types.AttributeKeyOfferID
 )
 
 type (
