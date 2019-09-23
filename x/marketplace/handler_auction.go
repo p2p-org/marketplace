@@ -119,7 +119,7 @@ func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sd
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
 			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
+			sdk.NewAttribute(types.AttributeKeyOwner, lot.LastBid.Bidder.String()),
 			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
 		),
 		sdk.NewEvent(
@@ -195,6 +195,14 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 		return wrapError(failMsg, err)
 	}
 
+	attrs := []sdk.Attribute{
+		sdk.NewAttribute(types.AttributeKeyBidder, msg.Bidder.String()),
+		sdk.NewAttribute(types.AttributeKeyBeneficiary, msg.BuyerBeneficiary.String()),
+		sdk.NewAttribute(types.AttributeKeyBid, msg.Bid.String()),
+		sdk.NewAttribute(types.AttributeKeyCommission, msg.BeneficiaryCommission),
+		sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+	}
+
 	// bid is more than buyout price. perform buyout
 	if !lot.BuyoutPrice.IsZero() {
 		if msg.Bid.IsAllGTE(lot.BuyoutPrice) {
@@ -202,6 +210,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 			if err != nil {
 				return wrapError(failMsg, err)
 			}
+			attrs = append(attrs, sdk.NewAttribute(types.AttributeKeyIsBuyout, "true"))
 			return sdk.Result{}
 		}
 	}
@@ -211,11 +220,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
 			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyBidder, msg.Bidder.String()),
-			sdk.NewAttribute(types.AttributeKeyBeneficiary, msg.BuyerBeneficiary.String()),
-			sdk.NewAttribute(types.AttributeKeyBid, msg.Bid.String()),
-			sdk.NewAttribute(types.AttributeKeyCommission, msg.BeneficiaryCommission),
-			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+			attrs...,
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,

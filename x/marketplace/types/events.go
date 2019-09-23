@@ -20,4 +20,5 @@ var (
 	AttributeKeySender       = "sender"
 	AttributeKeyNFTTokenURI  = "token_uri"
 	AttributeKeyOfferID      = "offer_id"
+	AttributeKeyIsBuyout     = "is_buyout"
 )

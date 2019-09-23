@@ -23,12 +23,6 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgRemoveNFTFromMarket(ctx, keeper, msg)
 		case MsgBuyNFT:
 			return handleMsgBuyNFT(ctx, keeper, msg)
-		case MsgCreateFungibleToken:
-			return handleMsgCreateFungibleTokensCurrency(ctx, keeper, msg)
-		case MsgTransferFungibleTokens:
-			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
-		case MsgUpdateNFTParams:
-			return handleMsgUpdateNFTParams(ctx, keeper, msg)
 		case MsgPutNFTOnAuction:
 			return handleMsgPutNFTOnAuction(ctx, keeper, msg)
 		case MsgRemoveNFTFromAuction:
@@ -39,64 +33,23 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgFinishAuction(ctx, keeper, msg)
 		case MsgBuyoutOnAuction:
 			return handleMsgBuyoutOnAuction(ctx, keeper, msg)
-		case MsgBurnFungibleToken:
-			return handleMsgBurnFT(ctx, keeper, msg)
 		case MsgMakeOffer:
 			return handleMsgMakeOffer(ctx, keeper, msg)
 		case MsgAcceptOffer:
 			return handleMsgAcceptOffer(ctx, keeper, msg)
+		case MsgUpdateNFTParams:
+			return handleMsgUpdateNFTParams(ctx, keeper, msg)
+		case MsgCreateFungibleToken:
+			return handleMsgCreateFungibleTokensCurrency(ctx, keeper, msg)
+		case MsgTransferFungibleTokens:
+			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
+		case MsgBurnFungibleToken:
+			return handleMsgBurnFungibleToken(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
 		}
 	}
-}
-
-func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper *Keeper, msg MsgCreateFungibleToken) sdk.Result {
-	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
-	if err := mpKeeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to create currency: %v", err)).Result()
-	}
-	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
-
-	ctx.EventManager().EmitEvents(sdk.Events{
-		sdk.NewEvent(
-			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyOwner, msg.Creator.String()),
-			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
-			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
-		),
-		sdk.NewEvent(
-			sdk.EventTypeMessage,
-			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, msg.Creator.String()),
-		),
-	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
-}
-
-func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper *Keeper, msg MsgTransferFungibleTokens) sdk.Result {
-	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
-	if err := mpKeeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to transfer coins: %v", err)).Result()
-	}
-	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
-
-	ctx.EventManager().EmitEvents(sdk.Events{
-		sdk.NewEvent(
-			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
-			sdk.NewAttribute(types.AttributeKeyRecipient, msg.Recipient.String()),
-			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
-			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
-		),
-		sdk.NewEvent(
-			sdk.EventTypeMessage,
-			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
-		),
-	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
 }
 
 func handleMsgPutNFTOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgPutNFTOnMarket) sdk.Result {
@@ -327,6 +280,122 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 	return sdk.Result{Events: ctx.EventManager().Events()}
 }
 
+func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNFTParams) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
+	nft, err := mpKeeper.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)).Result()
+	}
+	if !nft.Owner.Equals(msg.Owner) {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())).Result()
+	}
+
+	for _, v := range msg.Params {
+		v := v
+		switch v.Key {
+		case types.FlagParamPrice:
+			price, err := sdk.ParseCoins(v.Value)
+			if err != nil {
+				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)).Result()
+			}
+			if !mpKeeper.IsDenomExist(ctx, price) {
+				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: denom is not registered")).Result()
+
+			}
+			nft.Price = price
+		}
+	}
+
+	if err := mpKeeper.UpdateNFT(ctx, nft); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
+			sdk.NewAttribute(types.AttributeKeyCommission, msg.Params.String()),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper *Keeper, msg MsgCreateFungibleToken) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
+	if err := mpKeeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to create currency: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
+
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyOwner, msg.Creator.String()),
+			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
+			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Creator.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper *Keeper, msg MsgTransferFungibleTokens) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
+	if err := mpKeeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to transfer coins: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
+
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
+			sdk.NewAttribute(types.AttributeKeyRecipient, msg.Recipient.String()),
+			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
+			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgBurnFungibleToken(ctx sdk.Context, mpKeeper *Keeper, msg MsgBurnFungibleToken) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
+	if err := mpKeeper.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to burn coins: %v", err)).Result()
+	}
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
+
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
+			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
+			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
 func doNFTCommissions(
 	ctx sdk.Context,
 	k *Keeper,
@@ -470,73 +539,4 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 	priceDec := sdk.NewDecCoins(price)
 	totalCommission, _ := priceDec.MulDec(num).QuoDec(denom).TruncateDecimal()
 	return totalCommission
-}
-
-func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNFTParams) sdk.Result {
-	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
-	nft, err := mpKeeper.GetNFT(ctx, msg.TokenID)
-	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)).Result()
-	}
-	if !nft.Owner.Equals(msg.Owner) {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())).Result()
-	}
-
-	for _, v := range msg.Params {
-		v := v
-		switch v.Key {
-		case types.FlagParamPrice:
-			price, err := sdk.ParseCoins(v.Value)
-			if err != nil {
-				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)).Result()
-			}
-			if !mpKeeper.IsDenomExist(ctx, price) {
-				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: denom is not registered")).Result()
-
-			}
-			nft.Price = price
-		}
-	}
-
-	if err := mpKeeper.UpdateNFT(ctx, nft); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams: %v", err)).Result()
-	}
-	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
-	ctx.EventManager().EmitEvents(sdk.Events{
-		sdk.NewEvent(
-			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
-			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
-			sdk.NewAttribute(types.AttributeKeyCommission, msg.Params.String()),
-		),
-		sdk.NewEvent(
-			sdk.EventTypeMessage,
-			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
-		),
-	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
-}
-
-func handleMsgBurnFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBurnFungibleToken) sdk.Result {
-	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
-	if err := mpKeeper.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to burn coins: %v", err)).Result()
-	}
-	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
-
-	ctx.EventManager().EmitEvents(sdk.Events{
-		sdk.NewEvent(
-			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyOwner, msg.Owner.String()),
-			sdk.NewAttribute(types.AttributeKeyDenom, msg.Denom),
-			sdk.NewAttribute(types.AttributeKeyAmount, strconv.FormatInt(msg.Amount, 10)),
-		),
-		sdk.NewEvent(
-			sdk.EventTypeMessage,
-			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
-		),
-	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
 }
