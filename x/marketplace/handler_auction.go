@@ -203,7 +203,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 		sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
 	}
 
-	// bid is more than buyout price. perform buyout
+	// Bid is more than buyout price. Perform buyout.
 	if !lot.BuyoutPrice.IsZero() {
 		if msg.Bid.IsAllGTE(lot.BuyoutPrice) {
 			err = k.BuyLotOnAuction(ctx, msg.Bidder, msg.BuyerBeneficiary, lot.BuyoutPrice, lot, msg.BeneficiaryCommission)
@@ -211,7 +211,6 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 				return wrapError(failMsg, err)
 			}
 			attrs = append(attrs, sdk.NewAttribute(types.AttributeKeyIsBuyout, "true"))
-			return sdk.Result{}
 		}
 	}
 
