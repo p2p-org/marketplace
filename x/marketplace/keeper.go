@@ -3,6 +3,8 @@ package marketplace
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/x/supply"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
@@ -27,6 +29,7 @@ type Keeper struct {
 	config                   *config.MPServerConfig
 	msgMetr                  *common.MsgMetrics
 	nftKeeper                *nft.Keeper
+	supplyKeeper             *supply.Keeper
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -41,8 +44,8 @@ func NewKeeper(
 	cfg *config.MPServerConfig,
 	msgMetr *common.MsgMetrics,
 	nftKeeper *nft.Keeper,
+	supplyKeeper *supply.Keeper,
 ) *Keeper {
-
 	return &Keeper{
 		coinKeeper:               coinKeeper,
 		stakingKeeper:            stakingKeeper,
@@ -54,6 +57,7 @@ func NewKeeper(
 		config:                   cfg,
 		msgMetr:                  msgMetr,
 		nftKeeper:                nftKeeper,
+		supplyKeeper:             supplyKeeper,
 	}
 }
 
@@ -210,12 +214,21 @@ func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, de
 		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to send coins to comissionAddress")
 	}
-
-	if _, err := k.coinKeeper.AddCoins(ctx, creator, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))); err != nil {
+	mintedCoins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
+	sdkErr := k.supplyKeeper.MintCoins(ctx, bank.ModuleName, mintedCoins)
+	if sdkErr != nil {
 		RollbackCommissions(ctx, k, logger, initialBalances)
-		return fmt.Errorf("failed to add coins: %v", err)
+		return fmt.Errorf("failed to mint fungible tokens: %v", sdkErr.Error())
 	}
+
+	sdkErr = k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, creator, mintedCoins)
+	if sdkErr != nil {
+		RollbackCommissions(ctx, k, logger, initialBalances)
+		return fmt.Errorf("failed to add coins: %v", sdkErr.Error())
+	}
+
 	k.registerFungibleTokensCurrency(ctx, FungibleToken{Creator: creator, Denom: denom, EmissionAmount: amount})
+
 	return nil
 }
 
@@ -223,6 +236,7 @@ func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, de
 func (k *Keeper) RegisterBasicDenoms(ctx sdk.Context) {
 	ft := FungibleToken{Creator: []byte{}, Denom: types.DefaultTokenDenom, EmissionAmount: 1}
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
+	k.supplyKeeper.SetSupply(ctx, supply.NewSupply(sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.OneInt()))))
 
 	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
@@ -239,9 +253,12 @@ func (k *Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipien
 	if !store.Has([]byte(denom)) {
 		return fmt.Errorf("unknown currency")
 	}
-
-	if err := k.coinKeeper.SendCoins(ctx, currencyOwner, recipient, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))); err != nil {
-		return fmt.Errorf("failed to transfer tokens")
+	coins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
+	if err := k.supplyKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
+		return fmt.Errorf("failed to send tokens to module")
+	}
+	if err := k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, recipient, coins); err != nil {
+		return fmt.Errorf("failed to send tokens to account")
 	}
 	return nil
 }
@@ -271,7 +288,12 @@ func (k *Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddres
 		return fmt.Errorf("unknown currency")
 	}
 
-	_, err := k.coinKeeper.SubtractCoins(ctx, currencyOwner, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount))))
+	coins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
+	if err := k.supplyKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
+		return fmt.Errorf("failed to send tokens to module")
+	}
+
+	err := k.supplyKeeper.BurnCoins(ctx, bank.ModuleName, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount))))
 	if err != nil {
 		return fmt.Errorf("failed to burn fungible tokens")
 	}

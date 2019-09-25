@@ -166,6 +166,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		mint.ModuleName:           {supply.Minter},
 		staking.BondedPoolName:    {supply.Burner, supply.Staking},
 		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
+		bank.ModuleName:           {supply.Minter, supply.Burner, supply.Staking},
 	}
 	app.supplyKeeper = supply.NewKeeper(app.cdc, app.keySupply, app.accountKeeper,
 		app.bankKeeper, maccPerms)
@@ -230,6 +231,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
 		app.nftKeeper,
+		&app.supplyKeeper,
 	)
 
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
@@ -239,6 +241,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
 		auth.NewAppModule(app.accountKeeper),
 		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
+		supply.NewAppModule(app.supplyKeeper, app.accountKeeper),
 		distr.NewAppModule(app.distrKeeper, app.supplyKeeper),
 		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
 		staking.NewAppModule(app.stakingKeeper, app.accountKeeper, app.supplyKeeper),
