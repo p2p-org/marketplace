@@ -2,6 +2,8 @@
 
 echo "Clearing previous files..."
 rm -rf ~/.mp*
+mkdir -p ~/.mpd/config
+cp config.toml ~/.mpd/config
 
 echo "Building..."
 make install
@@ -11,6 +13,7 @@ echo "Initialization..."
 # max-commission [0.05]
 # example:
 # mpd init node0 --chain-id mpchain --max-commission 0.07
+
 mpd init node0 --chain-id mpchain
 
 echo "Adding keys..."
@@ -38,6 +41,11 @@ mpd gentx --name user1 <<< "12345678"
 mpd collect-gentxs
 mpd validate-genesis
 
-echo "Starting node..."
+if [ -z $1 ]; then
+  echo "Starting node..."
 
-mpd start
+  mpd start
+else
+  sed -i 's/proxy_app = "tcp:\/\/127.0.0.1:26658"/proxy_app = "tcp:\/\/0.0.0.0:26658"/' /root/.mpd/config/config.toml
+  sed -i 's/laddr = "tcp:\/\/127.0.0.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/' /root/.mpd/config/config.toml
+fi
