@@ -8,7 +8,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
-	"github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/cli"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/client/rest"
 	"github.com/gorilla/mux"

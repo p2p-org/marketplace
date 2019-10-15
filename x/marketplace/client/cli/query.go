@@ -62,7 +62,7 @@ func GetCmdNFTs(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/nfts", queryRoute), nil)
 			if err != nil {
-				fmt.Printf("could not get query names\n")
+				fmt.Printf("could not get query names:", err.Error())
 				return nil
 			}
 

@@ -12,14 +12,13 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	distr "github.com/cosmos/cosmos-sdk/x/distribution"
-	"github.com/cosmos/cosmos-sdk/x/genaccounts"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	"github.com/cosmos/cosmos-sdk/x/mint"
-	"github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/cosmos-sdk/x/supply"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
@@ -42,7 +41,6 @@ var (
 
 	// ModuleBasicManager is in charge of setting up basic module elemnets
 	ModuleBasics = module.NewBasicManager(
-		genaccounts.AppModuleBasic{},
 		genutil.AppModuleBasic{},
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
@@ -175,7 +173,6 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	stakingKeeper := staking.NewKeeper(
 		app.cdc,
 		app.keyStaking,
-		app.tkeyStaking,
 		app.supplyKeeper,
 		stakingSubspace,
 		staking.DefaultCodespace,
@@ -237,7 +234,6 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
 
 	app.mm = module.NewManager(
-		genaccounts.NewAppModule(app.accountKeeper),
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
 		auth.NewAppModule(app.accountKeeper),
 		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
@@ -255,7 +251,6 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 
 	// Sets the order of Genesis - Order matters, genutil is to always come last
 	app.mm.SetOrderInitGenesis(
-		genaccounts.ModuleName,
 		distr.ModuleName,
 		staking.ModuleName,
 		auth.ModuleName,

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/x/mint"
-	"github.com/cosmos/cosmos-sdk/x/nft"
 	"github.com/cosmos/cosmos-sdk/x/supply"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/prometheus/client_golang/prometheus"
 

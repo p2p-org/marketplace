@@ -11,7 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/rest"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-	"github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 
 	"github.com/gorilla/mux"

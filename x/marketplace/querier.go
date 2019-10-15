@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/nft"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
