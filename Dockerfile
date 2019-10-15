@@ -1,23 +1,33 @@
-FROM golang:1.12-alpine3.10
+# Simple usage with a mounted data directory:
+# > docker build -t mp .
+# > docker run -it -p 46657:46657 -p 46656:46656 -v ~/.mpd:/root/.mpd -v ~/.mpcli:/root/.mpcli mp mpd init
+# > docker run -it -p 46657:46657 -p 46656:46656 -v ~/.mpd:/root/.mpd -v ~/.mpcli:/root/.mpcli mp mpd start
+FROM golang:alpine AS build-env
 
-ENV APP=marketplace
-RUN apk update
-RUN apk upgrade
-RUN apk add --no-cache bash ca-certificates git libc-dev make build-base
+# Set up dependencies
+ENV PACKAGES curl make git libc-dev bash gcc linux-headers eudev-dev python
 
-ENV PATH /go/bin:$PATH
-ENV GOPATH /go
-ENV MARKETPLACEPATH /go/src/github.com/dgamingfoundation/marketplace
-RUN mkdir -p $MARKETPLACEPATH
+# Set working directory for the build
+WORKDIR /go/src/github.com/damingfoundation/mp
 
-COPY . $MARKETPLACEPATH
+# Add source files
+COPY . .
 
-WORKDIR $MARKETPLACEPATH
+# Install minimum necessary dependencies, build Cosmos SDK, remove packages
+RUN apk add --no-cache $PACKAGES && \
+    make tools && \
+    make install
 
-ENV GO111MODULE=on
+# Final image
+FROM alpine:edge
 
-RUN $MARKETPLACEPATH/run.sh --no_run
+# Install ca-certificates
+RUN apk add --update ca-certificates
+WORKDIR /root
 
-EXPOSE 26657
+# Copy over binaries from the build-env
+COPY --from=build-env /go/bin/mpd /usr/bin/mpd
+COPY --from=build-env /go/bin/mpcli /usr/bin/mpcli
 
-ENTRYPOINT mpd start
+# Run mpd by default, omit entrypoint to ease using container with mpcli
+CMD ["mpd"]
