@@ -734,3 +734,56 @@ func (m MsgAcceptOffer) GetSignBytes() []byte {
 func (m MsgAcceptOffer) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Seller}
 }
+
+// --------------------------------------------------------------------------
+//
+// MsgRemoveOffer
+//
+// --------------------------------------------------------------------------
+
+type MsgRemoveOffer struct {
+	Buyer   sdk.AccAddress `json:"buyer"`
+	TokenID string         `json:"token_id"`
+	OfferID string         `json:"offer_id"`
+}
+
+func NewMsgRemoveOffer(buyer sdk.AccAddress, tokenID, offerID string) *MsgRemoveOffer {
+	return &MsgRemoveOffer{
+		Buyer:   buyer,
+		TokenID: tokenID,
+		OfferID: offerID,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgRemoveOffer) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgRemoveOffer) Type() string { return "remove_offer" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgRemoveOffer) ValidateBasic() sdk.Error {
+	if m.Buyer.Empty() {
+		return sdk.ErrInvalidAddress(m.Buyer.String())
+	}
+	if len(m.OfferID) == 0 {
+		return sdk.ErrUnknownRequest("OfferID cannot be empty")
+	}
+	if len(m.TokenID) == 0 {
+		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+	}
+	if len(m.TokenID) > MaxTokenIDLength {
+		return sdk.ErrUnknownRequest("TokenID has invalid format")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgRemoveOffer) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgRemoveOffer) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Buyer}
+}

@@ -176,7 +176,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
 		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, keyAuctionStore, cdc,
 		config.DefaultMPServerConfig(), metr,
-		mpKeeperTest.nftKeeper)
+		mpKeeperTest.nftKeeper, &mpKeeperTest.supplyKeeper)
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)

@@ -97,12 +97,31 @@ func (m *NFT) AddOffer(offer *Offer) {
 
 func (m *NFT) GetOffer(id string) (*Offer, bool) {
 	for _, offer := range m.Offers {
+		offer := offer
 		if offer.ID == id {
 			return offer, true
 		}
 	}
 
 	return nil, false
+}
+
+func (m *NFT) RemoveOffer(offerID string, buyer sdk.AccAddress) bool {
+	for k, offer := range m.Offers {
+		k, offer := k, offer
+		if offer.ID == offerID && offer.Buyer.Equals(buyer) {
+			// this is common sliceTrick for slice of pointers
+			// needed for avoid memory leak
+			if k < len(m.Offers)-1 {
+				copy(m.Offers[k:], m.Offers[k+1:])
+			}
+			m.Offers[len(m.Offers)-1] = nil
+			m.Offers = m.Offers[:len(m.Offers)-1]
+			return true
+		}
+	}
+
+	return false
 }
 
 type Offer struct {

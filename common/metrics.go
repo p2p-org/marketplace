@@ -31,6 +31,7 @@ const (
 	PrometheusValueMsgBuyoutFromAuction      = "MsgBuyoutFromAuction"
 	PrometheusValueMsgMakeOffer              = "MsgMakeOffer"
 	PrometheusValueMsgAcceptOffer            = "MsgAcceptOffer"
+	PrometheusValueMsgRemoveOffer            = "MsgRemoveOffer"
 )
 
 func NewPrometheusMsgMetrics(module string) *MsgMetrics {

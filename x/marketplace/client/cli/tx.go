@@ -41,6 +41,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdBurnFungibleTokens(cdc),
 		GetCmdMakeOffer(cdc),
 		GetCmdAcceptOffer(cdc),
+		GetCmdRemoveOffer(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -440,5 +441,26 @@ func GetCmdAcceptOffer(cdc *codec.Codec) *cobra.Command {
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
 		"beneficiary fee, if left blank will be set to default")
+	return cmd
+}
+
+func GetCmdRemoveOffer(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "remove_offer [token_id] [offer_id]",
+		Short: "remove an offer",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			tokenID, offerID := args[0], args[1]
+
+			msg := types.NewMsgRemoveOffer(cliCtx.GetFromAddress(), tokenID, offerID)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
 	return cmd
 }

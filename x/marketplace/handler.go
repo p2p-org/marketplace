@@ -37,6 +37,8 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgMakeOffer(ctx, keeper, msg)
 		case MsgAcceptOffer:
 			return handleMsgAcceptOffer(ctx, keeper, msg)
+		case MsgRemoveOffer:
+			return handleMsgRemoveOffer(ctx, keeper, msg)
 		case MsgUpdateNFTParams:
 			return handleMsgUpdateNFTParams(ctx, keeper, msg)
 		case MsgCreateFungibleToken:
@@ -275,6 +277,38 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 			sdk.EventTypeMessage,
 			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
 			sdk.NewAttribute(sdk.AttributeKeySender, offer.Buyer.String()),
+		),
+	})
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgRemoveOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveOffer) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgRemoveOffer)
+	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: %v", err)).Result()
+	}
+
+	ok := token.RemoveOffer(msg.OfferID, msg.Buyer)
+	if !ok {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)).Result()
+	}
+
+	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: %v", err)).Result()
+	}
+
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgRemoveOffer)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			msg.Type(),
+			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
+			sdk.NewAttribute(types.AttributeKeyOfferID, msg.OfferID),
+		),
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
 		),
 	})
 	return sdk.Result{Events: ctx.EventManager().Events()}

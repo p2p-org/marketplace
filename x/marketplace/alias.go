@@ -43,4 +43,5 @@ type (
 	MsgBurnFungibleToken      = types.MsgBurnFungibleTokens
 	MsgMakeOffer              = types.MsgMakeOffer
 	MsgAcceptOffer            = types.MsgAcceptOffer
+	MsgRemoveOffer            = types.MsgRemoveOffer
 )
