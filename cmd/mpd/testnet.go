@@ -26,7 +26,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/genaccounts"
+	authexported "github.com/cosmos/cosmos-sdk/x/auth/exported"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
@@ -114,7 +114,7 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 	mpConfig.MinGasPrices = minGasPrices
 
 	var (
-		accs     []genaccounts.GenesisAccount
+		accs     []authexported.GenesisAccount
 		genFiles []string
 	)
 
@@ -193,13 +193,16 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 
 		accTokens := sdk.TokensFromConsensusPower(1000)
 		accStakingTokens := sdk.TokensFromConsensusPower(500)
-		accs = append(accs, genaccounts.GenesisAccount{
-			Address: addr,
-			Coins: sdk.Coins{
+		accs = append(accs, auth.NewBaseAccount(
+			addr,
+			sdk.Coins{
 				sdk.NewCoin(fmt.Sprintf("%stoken", nodeDirName), accTokens),
 				sdk.NewCoin(sdk.DefaultBondDenom, accStakingTokens),
 			},
-		})
+			valPubKeys[i],
+			uint64(i),
+			0,
+		))
 
 		valTokens := sdk.TokensFromConsensusPower(100)
 		msg := staking.NewMsgCreateValidator(
@@ -258,12 +261,13 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 }
 
 func initGenFiles(cdc *codec.Codec, mbm module.BasicManager, chainID string,
-	accs []genaccounts.GenesisAccount, genFiles []string, numValidators int) error {
+	accs []authexported.GenesisAccount, genFiles []string, numValidators int) error {
 
 	appGenState := mbm.DefaultGenesis()
 
 	// set the accounts in the genesis state
-	appGenState = genaccounts.SetGenesisStateInAppState(cdc, appGenState, accs)
+	genesisState := genutil.GetGenesisStateFromAppState(cdc, appGenState)
+	appGenState = genutil.SetGenesisStateInAppState(cdc, appGenState, genesisState)
 
 	appGenStateJSON, err := codec.MarshalJSONIndent(cdc, appGenState)
 	if err != nil {
