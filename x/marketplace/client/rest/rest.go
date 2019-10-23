@@ -2,6 +2,7 @@ package rest
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/rest"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	authTypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 
@@ -50,6 +52,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 	r.HandleFunc(fmt.Sprintf("/%s/bid_on_auction", storeName), bidOnAuctionHandler(cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprintf("/%s/buyout_auction", storeName), buyoutAuctionHandler(cliCtx)).Methods("PUT")
 
+	r.HandleFunc(fmt.Sprintf("/%s/txs", storeName), unifiedHandler(cliCtx)).Methods("POST")
 }
 
 // --------------------------------------------------------------------------------------
@@ -57,6 +60,36 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, storeName string) 
 // Tx Handler
 //
 // --------------------------------------------------------------------------------------
+
+func unifiedHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		msgBytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var ttx authTypes.StdTx
+
+		err = cliCtx.Codec.UnmarshalJSON(msgBytes, &ttx)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		txBytes, err := cliCtx.Codec.MarshalBinaryLengthPrefixed(ttx)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp, err := cliCtx.BroadcastTxSync(txBytes)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cliCtx, resp)
+	}
+}
 
 func broadcastTransaction(
 	cliCtx context.CLIContext,
