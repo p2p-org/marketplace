@@ -3,7 +3,7 @@ FROM golang:1.12-alpine3.10
 ENV APP=marketplace
 RUN apk update
 RUN apk upgrade
-RUN apk add --no-cache bash ca-certificates git libc-dev make build-base
+RUN apk add --no-cache bash zsh ca-certificates git libc-dev make build-base
 
 ENV PATH /go/bin:$PATH
 ENV GOPATH /go
@@ -16,7 +16,10 @@ WORKDIR $MARKETPLACEPATH
 
 ENV GO111MODULE=on
 
-RUN $MARKETPLACEPATH/run.sh --no_run
+#RUN $MARKETPLACEPATH/run.sh --no_run
+#RUN mkdir -p ~/.mpd/config
+#COPY config.toml ~/.mpd/config
+RUN make install
 
 EXPOSE 26657
 EXPOSE 1317
