@@ -45,6 +45,7 @@ func (k *Keeper) createAuctionLot(ctx sdk.Context, lot *types.AuctionLot) error 
 	return nil
 }
 
+// important! must do all necessary checks before evoking this function
 func (k *Keeper) RemoveNFTFromAuction(ctx sdk.Context, id string, owner sdk.AccAddress) error {
 	nft, err := k.GetNFT(ctx, id)
 	if err != nil {

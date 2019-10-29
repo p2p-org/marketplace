@@ -11,6 +11,7 @@ import (
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types/time"
 )
 
 // NewHandler returns a handler for "marketplace" type messages.
@@ -179,10 +180,6 @@ func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
 	}
 
-	if token.IsOnMarket() {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: token is already on the market")).Result()
-	}
-
 	token.AddOffer(&types.Offer{
 		ID:                    uuid.New().String(),
 		Price:                 msg.Price,
@@ -221,10 +218,6 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: %v", err)).Result()
 	}
 
-	if token.IsOnMarket() {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: token is already on the market")).Result()
-	}
-
 	offer, ok := token.GetOffer(msg.OfferID)
 	if !ok {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)).Result()
@@ -237,6 +230,37 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 	}
 	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: beneficiary commission is too high")).Result()
+	}
+
+	if token.IsOnMarket() {
+		err := mpKeeper.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Seller)
+		if err != nil {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not remove token from market")).Result()
+		}
+	}
+
+	if token.IsOnAuction() {
+		lot, err := mpKeeper.GetAuctionLot(ctx, msg.TokenID)
+		if err != nil {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not get auction lot")).Result()
+		}
+
+		if lot.ExpirationTime.Before(time.Now().UTC()) {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("auction is already finished")).Result()
+		}
+
+		// return bid to last bidder if exists
+		if lot.LastBid != nil {
+			_, err := mpKeeper.coinKeeper.AddCoins(ctx, lot.LastBid.Bidder, lot.LastBid.Bid)
+			if err != nil {
+				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not get return coins to bidder")).Result()
+			}
+		}
+
+		err = mpKeeper.RemoveNFTFromAuction(ctx, msg.TokenID, msg.Seller)
+		if err != nil {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not remove token from market")).Result()
+		}
 	}
 
 	priceAfterCommission, err := doNFTCommissions(
