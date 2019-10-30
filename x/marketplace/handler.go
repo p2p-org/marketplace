@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/google/uuid"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/google/uuid"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types/time"
@@ -34,6 +34,14 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgFinishAuction(ctx, keeper, msg)
 		case MsgBuyoutOnAuction:
 			return handleMsgBuyoutOnAuction(ctx, keeper, msg)
+		case MsgBatchTransfer:
+			return handleMsgBatchTransfer(ctx, keeper, msg)
+		case MsgBatchPutOnMarket:
+			return handleMsgBatchPutOnMarket(ctx, keeper, msg)
+		case MsgBatchRemoveFromMarket:
+			return handleMsgBatchRemoveFromMarket(ctx, keeper, msg)
+		case MsgBatchBuyOnMarket:
+			return handleMsgBatchBuyOnMarket(ctx, keeper, msg)
 		case MsgMakeOffer:
 			return handleMsgMakeOffer(ctx, keeper, msg)
 		case MsgAcceptOffer:
@@ -597,4 +605,151 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 	priceDec := sdk.NewDecCoins(price)
 	totalCommission, _ := priceDec.MulDec(num).QuoDec(denom).TruncateDecimal()
 	return totalCommission
+}
+
+func handleMsgBatchTransfer(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchTransfer) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBatchTransfer)
+
+	for _, tokenID := range msg.TokenIDs {
+		token, err := mpKeeper.GetNFT(ctx, tokenID)
+		if err != nil {
+			sdk.ErrUnknownRequest(fmt.Sprintf("failed to find token %s: %v", tokenID, err)).Result()
+		}
+		res := HandleMsgTransferNFTMarketplace(ctx, nft.MsgTransferNFT{
+			Sender:    msg.Sender,
+			Recipient: msg.Recipient,
+			Denom:     token.Denom,
+			ID:        tokenID,
+		}, mpKeeper.nftKeeper, mpKeeper)
+		if !res.IsOK() {
+			ctx.Logger().Info("batch transfer error, tokenID:", tokenID, "result:", string(res.Data))
+			continue
+		}
+	}
+
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBatchTransfer)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Sender.String()),
+		),
+	})
+
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgBatchPutOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchPutOnMarket) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchPutOnMarket)
+
+	for k, price := range msg.TokenPrices {
+		k := k
+		tokenID := msg.TokenIDs[k]
+		price := price
+
+		res := handleMsgPutNFTOnMarket(ctx, mpKeeper, MsgPutNFTOnMarket{
+			Owner:       msg.Owner,
+			Beneficiary: msg.Beneficiary,
+			TokenID:     tokenID,
+			Price:       price,
+		})
+		if !res.IsOK() {
+			ctx.Logger().Info("batch put on market error, tokenID:", tokenID, "result:", string(res.Data))
+			return res
+		}
+	}
+
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMsgBatchPutOnMarket)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
+		),
+	})
+
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgBatchRemoveFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchRemoveFromMarket) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchRemoveFromMarket)
+
+	for _, tokenID := range msg.TokenIDs {
+		res := handleMsgRemoveNFTFromMarket(ctx, mpKeeper, MsgRemoveNFTFromMarket{
+			Owner:   msg.Owner,
+			TokenID: tokenID,
+		})
+		if !res.IsOK() {
+			ctx.Logger().Info("batch remove from market error, tokenID:", tokenID, "result:", string(res.Data))
+			continue
+		}
+	}
+
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMsgBatchRemoveFromMarket)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
+		),
+	})
+
+	return sdk.Result{Events: ctx.EventManager().Events()}
+}
+
+func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBuyOnMarket) sdk.Result {
+	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchBuyOnMarket)
+
+	beneficiariesCommission := types.DefaultBeneficiariesCommission
+	parsed, err := strconv.ParseFloat(msg.BeneficiaryCommission, 64)
+	if err == nil {
+		beneficiariesCommission = parsed
+	}
+	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")).Result()
+	}
+
+	priceSum := sdk.NewCoins()
+
+	for _, tokenID := range msg.TokenIDs {
+		tokenID := tokenID
+		token, err := mpKeeper.GetNFT(ctx, tokenID)
+		if err != nil {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
+		}
+		if !token.IsOnMarket() {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to buy: token %v is not on market", token.ID)).Result()
+		}
+		priceSum = priceSum.Add(token.Price)
+	}
+
+	buyerCoins := mpKeeper.coinKeeper.GetCoins(ctx, msg.Buyer)
+	if !buyerCoins.IsAllGTE(priceSum) {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to buy batch: not enough funds")).Result()
+	}
+
+	for _, tokenID := range msg.TokenIDs {
+		tokenID := tokenID
+
+		res := handleMsgBuyNFT(ctx, mpKeeper, MsgBuyNFT{
+			Buyer:       msg.Buyer,
+			Beneficiary: msg.Beneficiary,
+			TokenID:     tokenID,
+		})
+		if !res.IsOK() {
+			ctx.Logger().Info("batch buy error, tokenID:", tokenID, "result:", string(res.Data))
+			continue
+		}
+	}
+
+	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMsgBatchBuyOnMarket)
+	ctx.EventManager().EmitEvents(sdk.Events{
+		sdk.NewEvent(
+			sdk.EventTypeMessage,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
+		),
+	})
+
+	return sdk.Result{Events: ctx.EventManager().Events()}
 }

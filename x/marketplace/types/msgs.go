@@ -629,6 +629,239 @@ func (m MsgBuyoutOnAuction) GetSigners() []sdk.AccAddress {
 
 // --------------------------------------------------------------------------
 //
+// MsgBatchTransfer
+//
+// --------------------------------------------------------------------------
+
+type MsgBatchTransfer struct {
+	Sender    sdk.AccAddress `json:"sender"`
+	Recipient sdk.AccAddress `json:"recipient"`
+	TokenIDs  []string       `json:"token_ids"`
+}
+
+func NewMsgBatchTransfer(sender, recipient sdk.AccAddress, tokenIDs []string) *MsgBatchTransfer {
+	return &MsgBatchTransfer{
+		Sender:    sender,
+		Recipient: recipient,
+		TokenIDs:  tokenIDs,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBatchTransfer) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBatchTransfer) Type() string { return "batch_transfer" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBatchTransfer) ValidateBasic() sdk.Error {
+	if m.Sender.Empty() {
+		return sdk.ErrInvalidAddress(m.Sender.String())
+	}
+	if len(m.TokenIDs) == 0 {
+		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+	}
+	for _, tokenID := range m.TokenIDs {
+		if len(tokenID) > MaxTokenIDLength {
+			return sdk.ErrUnknownRequest("TokenID has invalid format")
+		}
+	}
+
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBatchTransfer) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBatchTransfer) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Sender}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBatchPutOnMarket
+//
+// --------------------------------------------------------------------------
+
+type MsgBatchPutOnMarket struct {
+	Owner       sdk.AccAddress `json:"owner"`
+	Beneficiary sdk.AccAddress `json:"beneficiary"`
+	TokenIDs    []string       `json:"token_ids"`
+	TokenPrices []sdk.Coins    `json:"token_prices"`
+}
+
+func NewMsgBatchPutOnMarket(owner, beneficiary sdk.AccAddress, tokenIDs []string, tokenPrices []sdk.Coins) *MsgBatchPutOnMarket {
+	return &MsgBatchPutOnMarket{
+		Owner:       owner,
+		Beneficiary: beneficiary,
+		TokenIDs:    tokenIDs,
+		TokenPrices: tokenPrices,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBatchPutOnMarket) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBatchPutOnMarket) Type() string { return "batch_put_on_market" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBatchPutOnMarket) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+
+	if len(m.TokenIDs) == 0 {
+		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+	}
+
+	if len(m.TokenPrices) == 0 {
+		return sdk.ErrUnknownRequest("TokenPrices cannot be empty")
+	}
+
+	if len(m.TokenIDs) != len(m.TokenPrices) {
+		return sdk.ErrUnknownRequest("TokenPrices cannot be different length with TokenIDs")
+	}
+	for _, tokenID := range m.TokenIDs {
+		tokenID := tokenID
+		if len(tokenID) > MaxTokenIDLength {
+			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+		}
+	}
+
+	for _, price := range m.TokenPrices {
+		price := price
+		if price.IsZero() || price.IsAnyNegative() {
+			return sdk.ErrUnknownRequest("No price cannot be zero or negative")
+		}
+	}
+
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBatchPutOnMarket) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBatchPutOnMarket) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBatchRemoveFromMarket
+//
+// --------------------------------------------------------------------------
+
+type MsgBatchRemoveFromMarket struct {
+	Owner    sdk.AccAddress `json:"owner"`
+	TokenIDs []string       `json:"token_ids"`
+}
+
+func NewMsgBatchRemoveFromMarket(owner sdk.AccAddress, tokenIDs []string) *MsgBatchRemoveFromMarket {
+	return &MsgBatchRemoveFromMarket{
+		Owner:    owner,
+		TokenIDs: tokenIDs,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBatchRemoveFromMarket) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBatchRemoveFromMarket) Type() string { return "batch_remove_from_market" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBatchRemoveFromMarket) ValidateBasic() sdk.Error {
+	if m.Owner.Empty() {
+		return sdk.ErrInvalidAddress(m.Owner.String())
+	}
+	if len(m.TokenIDs) == 0 {
+		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+	}
+
+	for _, tokenID := range m.TokenIDs {
+		if len(tokenID) > MaxTokenIDLength {
+			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+		}
+	}
+
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBatchRemoveFromMarket) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBatchRemoveFromMarket) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Owner}
+}
+
+// --------------------------------------------------------------------------
+//
+// MsgBatchBuyOnMarket
+//
+// --------------------------------------------------------------------------
+
+type MsgBatchBuyOnMarket struct {
+	Buyer                 sdk.AccAddress `json:"owner"`
+	Beneficiary           sdk.AccAddress `json:"beneficiary"`
+	BeneficiaryCommission string         `json:"beneficiary_commission,omitempty"`
+	TokenIDs              []string       `json:"token_ids"`
+}
+
+func NewMsgBatchBuyOnMarket(buyer, beneficiary sdk.AccAddress, commission string, tokenIDs []string) *MsgBatchBuyOnMarket {
+	return &MsgBatchBuyOnMarket{
+		Buyer:                 buyer,
+		Beneficiary:           beneficiary,
+		BeneficiaryCommission: commission,
+		TokenIDs:              tokenIDs,
+	}
+}
+
+// Route should return the name of the module
+func (m MsgBatchBuyOnMarket) Route() string { return RouterKey }
+
+// Type should return the action
+func (m MsgBatchBuyOnMarket) Type() string { return "batch_buy_on_market" }
+
+// ValidateBasic runs stateless checks on the message
+func (m MsgBatchBuyOnMarket) ValidateBasic() sdk.Error {
+	if m.Buyer.Empty() {
+		return sdk.ErrInvalidAddress(m.Buyer.String())
+	}
+	if len(m.TokenIDs) == 0 {
+		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+	}
+
+	for _, tokenID := range m.TokenIDs {
+		if len(tokenID) > MaxTokenIDLength {
+			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+		}
+	}
+
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (m MsgBatchBuyOnMarket) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(m))
+}
+
+// GetSigners defines whose signature is required
+func (m MsgBatchBuyOnMarket) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{m.Buyer}
+}
+
+// --------------------------------------------------------------------------
+//
 // MsgMakeOffer
 //
 // --------------------------------------------------------------------------

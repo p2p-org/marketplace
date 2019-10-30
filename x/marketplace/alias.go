@@ -41,6 +41,10 @@ type (
 	MsgCreateFungibleToken    = types.MsgCreateFungibleToken
 	MsgTransferFungibleTokens = types.MsgTransferFungibleTokens
 	MsgBurnFungibleToken      = types.MsgBurnFungibleTokens
+	MsgBatchTransfer          = types.MsgBatchTransfer
+	MsgBatchPutOnMarket       = types.MsgBatchPutOnMarket
+	MsgBatchRemoveFromMarket  = types.MsgBatchRemoveFromMarket
+	MsgBatchBuyOnMarket       = types.MsgBatchBuyOnMarket
 	MsgMakeOffer              = types.MsgMakeOffer
 	MsgAcceptOffer            = types.MsgAcceptOffer
 	MsgRemoveOffer            = types.MsgRemoveOffer

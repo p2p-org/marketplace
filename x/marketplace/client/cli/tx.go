@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -41,6 +43,10 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdBurnFungibleTokens(cdc),
 		GetCmdMakeOffer(cdc),
 		GetCmdAcceptOffer(cdc),
+		GetCmdBatchTransfer(cdc),
+		GetCmdBatchPutOnMarket(cdc),
+		GetCmdBatchRemoveFromMarket(cdc),
+		GetCmdBatchBuyOnMarket(cdc),
 		GetCmdRemoveOffer(cdc),
 	)...)
 
@@ -453,7 +459,6 @@ func GetCmdRemoveOffer(cdc *codec.Codec) *cobra.Command {
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			tokenID, offerID := args[0], args[1]
-
 			msg := types.NewMsgRemoveOffer(cliCtx.GetFromAddress(), tokenID, offerID)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
@@ -462,5 +467,153 @@ func GetCmdRemoveOffer(cdc *codec.Codec) *cobra.Command {
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
+	return cmd
+}
+
+func GetCmdBatchTransfer(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "batch_transfer [recipient] [tokenIDs]",
+		Short: "transfer several tokens at once",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			recipient, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			ids := strings.Split(args[1], ",")
+			if len(ids) < 1 {
+				return fmt.Errorf("no token ids provided")
+			}
+			msg := types.NewMsgBatchTransfer(cliCtx.GetFromAddress(), recipient, ids)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
+		"beneficiary fee, if left blank will be set to default")
+	return cmd
+}
+
+func GetCmdBatchPutOnMarket(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "batch_put_on_market [beneficiary] [tokenPrices]",
+		Short: "put on market several tokens at once",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			beneficiary, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			var pricesUnparsed map[string]string
+			rm := json.RawMessage(args[1])
+			err = json.Unmarshal(rm, &pricesUnparsed)
+			if err != nil {
+				return fmt.Errorf("failed to parse prices: %v", err)
+			}
+
+			tokenIDs := make([]string, 0)
+			prices := make([]sdk.Coins, 0)
+			for k, v := range pricesUnparsed {
+				k, v := k, v
+				price, err := sdk.ParseCoins(v)
+				if err != nil {
+					return fmt.Errorf("failed to parse price for %v: %v", k, err)
+				}
+				tokenIDs = append(tokenIDs, k)
+				prices = append(prices, price)
+			}
+
+			msg := types.NewMsgBatchPutOnMarket(cliCtx.GetFromAddress(), beneficiary, tokenIDs, prices)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			if err != nil {
+				return err
+			}
+			txBldr = txBldr.WithGas(5 * txBldr.Gas())
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	return cmd
+}
+
+func GetCmdBatchRemoveFromMarket(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "batch_remove_from_market [tokenIDs]",
+		Short: "remove batch from market",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			ids := strings.Split(args[0], ",")
+			if len(ids) < 1 {
+				return fmt.Errorf("no token ids provided")
+			}
+
+			msg := types.NewMsgBatchRemoveFromMarket(cliCtx.GetFromAddress(), ids)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			var err error
+			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			if err != nil {
+				return err
+			}
+			txBldr = txBldr.WithGas(5 * txBldr.Gas())
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	return cmd
+}
+
+func GetCmdBatchBuyOnMarket(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "batch_buy_on_market [beneficiary] [tokenPrices]",
+		Short: "buy on market several tokens at once",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			commission := viper.GetString(types.FlagBeneficiaryCommission)
+
+			beneficiary, err := sdk.AccAddressFromBech32(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse beneficiary address: %v", err)
+			}
+
+			ids := strings.Split(args[1], ",")
+			if len(ids) < 1 {
+				return fmt.Errorf("no token ids provided")
+			}
+
+			msg := types.NewMsgBatchBuyOnMarket(cliCtx.GetFromAddress(), beneficiary, commission, ids)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			if err != nil {
+				return err
+			}
+			txBldr = txBldr.WithGas(5 * txBldr.Gas())
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
+		"beneficiary fee, if left blank will be set to default")
 	return cmd
 }
