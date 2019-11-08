@@ -183,6 +183,11 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 
 func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk.Result {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMakeOffer)
+
+	if !mpKeeper.coinKeeper.HasCoins(ctx, msg.Buyer, msg.Price) {
+		return sdk.ErrUnknownRequest("buyer does not have the offered funds").Result()
+	}
+
 	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
