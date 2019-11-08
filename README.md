@@ -20,6 +20,21 @@ To run a node with a script:
 ./run.sh
 ```
 
+#### Additional parameters
+```bash
+-h, --help                show brief help
+--demo                    set demo mode (add demo accounts)
+-n, --num_account=n       specify number of demo accounts | 200 default
+-m, --money=m             specify token amount for demo account | 100000token default
+-s, --stake=s             specify stake amount for demo account | 100000000 default
+-o, --output_file=o       specify output file | out.txt default
+--embeded                 set embeded mode (for docker)
+```
+example:
+```
+$ ./run.sh --demo -n 5 -m 100token -s 200
+```
+
 This will start a node with two users, `user1` and `user2` (both are validators).
 
 ## Client commands

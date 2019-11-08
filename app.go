@@ -229,6 +229,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		common.NewPrometheusMsgMetrics("marketplace"),
 		app.nftKeeper,
 		&app.supplyKeeper,
+		&app.accountKeeper,
 	)
 
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)

@@ -78,7 +78,6 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	tkeyParams := sdk.NewTransientStoreKey(params.TStoreKey)
 	keyAccount := sdk.NewKVStoreKey(auth.StoreKey)
 	keyStaking := sdk.NewKVStoreKey(staking.StoreKey)
-	tkeyStaking := sdk.NewTransientStoreKey(staking.TStoreKey)
 	keySlashing := sdk.NewKVStoreKey(slashing.StoreKey)
 	keyDistr := sdk.NewKVStoreKey(distr.StoreKey)
 	keySupply := sdk.NewKVStoreKey(supply.StoreKey)
@@ -123,7 +122,6 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.stakingKeeper = staking.NewKeeper(
 		cdc,
 		keyStaking,
-		tkeyStaking,
 		mpKeeperTest.supplyKeeper,
 		stakingSubspace,
 		staking.DefaultCodespace,
@@ -176,7 +174,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
 		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, keyAuctionStore, cdc,
 		config.DefaultMPServerConfig(), metr,
-		mpKeeperTest.nftKeeper, &mpKeeperTest.supplyKeeper)
+		mpKeeperTest.nftKeeper, &mpKeeperTest.supplyKeeper, &mpKeeperTest.accountKeeper)
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)

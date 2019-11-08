@@ -3,13 +3,13 @@ package marketplace
 import (
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/x/supply"
-
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/cosmos/cosmos-sdk/x/distribution"
 	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
 	"github.com/dgamingfoundation/marketplace/common"
 	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
@@ -30,6 +30,7 @@ type Keeper struct {
 	msgMetr                  *common.MsgMetrics
 	nftKeeper                *nft.Keeper
 	supplyKeeper             *supply.Keeper
+	accKeeper                *auth.AccountKeeper
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -45,6 +46,7 @@ func NewKeeper(
 	msgMetr *common.MsgMetrics,
 	nftKeeper *nft.Keeper,
 	supplyKeeper *supply.Keeper,
+	accKeeper *auth.AccountKeeper,
 ) *Keeper {
 	return &Keeper{
 		coinKeeper:               coinKeeper,
@@ -58,6 +60,7 @@ func NewKeeper(
 		msgMetr:                  msgMetr,
 		nftKeeper:                nftKeeper,
 		supplyKeeper:             supplyKeeper,
+		accKeeper:                accKeeper,
 	}
 }
 

@@ -16,3 +16,5 @@ build
 
 go.sum
 *.json
+
+*.txt

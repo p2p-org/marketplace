@@ -57,6 +57,11 @@ func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nf
 		return res
 	}
 
+	// Create an account for recipient.
+	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Recipient); acc == nil {
+		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Recipient))
+	}
+
 	err := mpKeeper.TransferNFT(ctx, msg.ID, msg.Sender, msg.Recipient)
 	if err != nil {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to TransferNFT: %v", err)).Result()
@@ -68,6 +73,11 @@ func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nf
 // HandleMsgMintNFTMarketplace handles MsgMintNFT
 func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) sdk.Result {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMintNFT)
+
+	// Create an account for new users that try to mint an NFT.
+	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Sender); acc == nil {
+		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Sender))
+	}
 
 	res := nft.HandleMsgMintNFT(ctx, msg, *nftKeeper)
 	if !res.IsOK() {
