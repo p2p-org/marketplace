@@ -74,8 +74,8 @@ func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nf
 func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) sdk.Result {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMintNFT)
 
-	// Create an account for new users that try to mint an NFT.
-	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Sender); acc == nil {
+	// Create an account for the recipient of the minted NFTs.
+	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Recipient); acc == nil {
 		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Sender))
 	}
 
