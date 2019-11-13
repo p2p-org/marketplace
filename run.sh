@@ -18,6 +18,7 @@ while test $# -gt 0; do
       echo "--build                   manual rebuild marketplace (not for docker)"
       echo "--reset                   force reset blockchain state (clear all data)"
       echo "--demo                    add demo accounts (used only with --reset)"
+      echo "--input_mnemonic          specify mnemonics file"
       echo "-n, --num_account=n       specify number of demo accounts | 200 default"
       echo "-m, --money=m             specify token amount for demo account | 100000token default"
       echo "-s, --stake=s             specify stake amount for demo account | 100000000 default"
@@ -81,6 +82,16 @@ while test $# -gt 0; do
       NORUN=true
       shift
       ;;
+    --input_mnemonic)
+      shift
+      if test $# -gt 0; then
+        file_input=$1
+      else
+        echo "no mnemonic_file specified"
+        exit 1
+      fi
+      shift
+      ;;
     *)
       break
       ;;
@@ -118,15 +129,29 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
   mpd add-genesis-account $(mpcli keys show dgaming -a) 1000token,100000000stake
 
   if [[ $DEMO ]]; then
-    rm $file_output
-    for ((i=1;i<=$account_num;i++));
-    do
-      pwd=$(gpg --gen-random --armor 1 14)
-      mnemonic=$(mpcli keys add demo$i <<< $pwd |& tail -1)
-
-      mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
-      echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
-    done
+    if [[ -z $file_input ]]; then
+      rm $file_output
+      echo "generate mnemonics"
+      for ((i=1;i<=$account_num;i++));
+      do
+        pwd=$(gpg --gen-random --armor 1 14)
+        mnemonic=$(mpcli keys add demo$i <<< $pwd |& tail -1)
+        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
+        echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
+      done
+    else
+      echo "read prepared mnemonics"
+      i=1
+      while read -r line; do
+        pwd=$(gpg --gen-random --armor 1 14)
+        echo $line > tmp.txt
+        echo "" >> tmp.txt
+        mpcli keys add demo$i -i <<< $pwd < tmp.txt 
+        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
+        i=$((i+1))
+      done < $file_input
+      rm tmp.txt
+    fi
   fi
 
   echo "Configuring..."
