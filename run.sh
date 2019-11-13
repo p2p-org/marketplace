@@ -122,7 +122,7 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
     for ((i=1;i<=$account_num;i++));
     do
       pwd=$(gpg --gen-random --armor 1 14)
-      mnemonic=$(mpcli keys add demo$i <<< $pwd 2>&1 >/dev/null | tail -1)
+      mnemonic=$(mpcli keys add demo$i <<< $pwd |& tail -1)
 
       mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
       echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
