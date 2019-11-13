@@ -76,7 +76,7 @@ func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper 
 
 	// Create an account for the recipient of the minted NFTs.
 	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Recipient); acc == nil {
-		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Sender))
+		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Recipient))
 	}
 
 	res := nft.HandleMsgMintNFT(ctx, msg, *nftKeeper)

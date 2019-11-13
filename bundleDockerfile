@@ -16,12 +16,9 @@ WORKDIR $MARKETPLACEPATH
 
 ENV GO111MODULE=on
 
-#RUN $MARKETPLACEPATH/run.sh --embeded
-#RUN mkdir -p ~/.mpd/config
-#COPY config.toml ~/.mpd/config
 RUN make install
 
 EXPOSE 26657
 EXPOSE 1317
 
-ENTRYPOINT $MARKETPLACEPATH/mpdstart.sh
+ENTRYPOINT $MARKETPLACEPATH/run.sh
