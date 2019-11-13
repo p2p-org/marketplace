@@ -114,6 +114,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 		mint.ModuleName:           {supply.Minter},
 		staking.BondedPoolName:    {supply.Burner, supply.Staking},
 		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
+		bank.ModuleName:           {supply.Minter, supply.Burner, supply.Staking},
 	}
 
 	mpKeeperTest.supplyKeeper = supply.NewKeeper(cdc, keySupply, mpKeeperTest.accountKeeper,
@@ -160,6 +161,8 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.ms.MountStoreWithDB(keyRegisterCurrency, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyNFT, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyAuctionStore, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keySupply, sdk.StoreTypeIAVL, db)
+
 	if err := mpKeeperTest.ms.LoadLatestVersion(); err != nil {
 		return nil, err
 	}
@@ -169,6 +172,7 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 		keyNFT,
 	)
 	mpKeeperTest.nftKeeper = &newKeeper
+
 	metr := &common.MsgMetrics{NumMsgs: prometheus.NewCounterVec(prometheus.CounterOpts{},
 		[]string{common.PrometheusLabelStatus, common.PrometheusLabelMsgType})}
 	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,

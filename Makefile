@@ -37,3 +37,5 @@ localnet-start: build-linux localnet-stop
 # Stop testnet
 localnet-stop:
 	docker-compose down
+
+.PHONY: test
