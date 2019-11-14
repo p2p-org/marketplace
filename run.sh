@@ -1,8 +1,9 @@
 #!/usr/bin/env zsh
 
-account_num=200
+account_num=${ACC_CNT:-200}
 money_count="100000token"
-file_output="out.txt"
+file_output=${ACC_OUT_FILE:-"out.txt"}
+file_input=${ACC_IN_FILE:-""}
 stake_count=100000000
 PSW="12345678"
 
@@ -129,28 +130,26 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
   mpd add-genesis-account $(mpcli keys show dgaming -a) 1000token,100000000stake
 
   if [[ $DEMO ]]; then
-    if [[ -z $file_input ]]; then
-      rm $file_output
-      echo "generate mnemonics"
-      for ((i=1;i<=$account_num;i++));
-      do
-        pwd=$(gpg --gen-random --armor 1 14)
-        mnemonic=$(mpcli keys add demo$i <<< $pwd |& tail -1)
-        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
-        echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
-      done
-    else
+    if [[ -e $file_input ]]; then
       echo "read prepared mnemonics"
       i=1
       while read -r line; do
-        pwd=$(gpg --gen-random --armor 1 14)
         echo $line > tmp.txt
         echo "" >> tmp.txt
-        mpcli keys add demo$i -i <<< $pwd < tmp.txt 
+        mpcli keys add demo$i -i <<< $PSW < tmp.txt
         mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
         i=$((i+1))
       done < $file_input
       rm tmp.txt
+    else
+      rm $file_output
+      echo "generate mnemonics"
+      for ((i=1;i<=$account_num;i++));
+      do
+        mnemonic=$(mpcli keys add demo$i <<< $PSW |& tail -1)
+        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
+        echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
+      done
     fi
   fi
 
