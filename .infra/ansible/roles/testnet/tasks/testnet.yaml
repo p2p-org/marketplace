@@ -1,0 +1,176 @@
+- name: Make base directory for testnet dependencies | testnet
+  file:
+    path: "/opt/testnet"
+    mode: 0755
+    state: directory
+    recurse: true
+
+- name: Create service network | tesnet
+  docker_network:
+    name: testnet
+
+- name: Login to registry containing testnet image | testnet
+  command: "docker login -u {{ docker_testnet_pull_token_login }} -p {{ docker_testnet_pull_token_password }} {{ testnet_image }}"
+
+# Data for every node should be saved in subdirectory for a future sync
+- name: Make base directory for testnet node files | testnet
+  file:
+    path: "/opt/testnet/{{ inventory_hostname }}"
+    mode: 0755
+    state: directory
+    recurse: true
+
+- name: Bootstrap first node | testnet
+  run_once: true
+  block:
+    - name: Run node0 bootstrap commands | testnet-bootstrap
+      command: |
+        docker run -i --name testnet_init -v /opt/testnet/{{ inventory_hostname }}:/root/ {{ testnet_image }} bash -c "
+        mpd init {{ inventory_hostname }} --chain-id {{ env_name }};
+
+        for i in $(seq 1 {{ testnet_clients_amount }}); do
+          mpcli keys add user$i <<< '{{ testnet_client_password }}';
+        done;
+        mpcli keys add sellerBeneficiary <<< '{{ testnet_client_password }}';
+        mpcli keys add buyerBeneficiary <<< '{{ testnet_client_password }}';
+        mpcli keys add dgaming <<< '{{ testnet_client_password }}';
+
+        for i in $(seq 1 {{ testnet_clients_amount }}); do
+          mpd add-genesis-account $(mpcli keys show user$i -a) 1000token,100000000stake;
+        done;
+        mpd add-genesis-account $(mpcli keys show sellerBeneficiary -a) 1000token,100000000stake;
+        mpd add-genesis-account $(mpcli keys show buyerBeneficiary -a) 1000token,100000000stake;
+        mpd add-genesis-account $(mpcli keys show dgaming -a) 1000token,100000000stake;
+
+        mpcli config chain-id {{ env_name }};
+        mpcli config output json;
+        mpcli config indent true;
+        mpcli config trust-node true;
+
+        mpd gentx --name user1 --ip {{ ansible_host }} <<< '{{ testnet_client_password }}';
+        mpd collect-gentxs;
+        mpd validate-genesis;
+        "
+      args:
+        creates: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/genesis.json"
+
+    - name: Save bootstrap logs | testnet-bootstrap
+      shell: docker logs testnet_init > /opt/testnet/bootstrap.log
+      args:
+        creates: "/opt/testnet/bootstrap.log"
+
+    - name: Fetch bootstrap logs | testnet
+      fetch:
+        src: "/opt/testnet/bootstrap.log"
+        dest: "fetch/bootstrap.log"
+        flat: true
+
+    - name: Make proxy_app to 0.0.0.0 in mpd config | testnet-bootstrap
+      lineinfile:
+        path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        regexp: '^proxy_app ='
+        line: 'proxy_app = "tcp://0.0.0.0:26658"'
+
+    - name: Make prof_laddr to 0.0.0.0 in mpd config | testnet-bootstrap
+      lineinfile:
+        path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        regexp: '^prof_laddr ='
+        line: 'prof_laddr = "0.0.0.0:{{ testnet_prometheus_port }}"'
+
+    - name: Make rpc laddr to 0.0.0.0 in mpd config | testnet-bootstrap
+      lineinfile:
+        path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        regexp: '^laddr = "tcp://.*:26657"'
+        line: 'laddr = "tcp://0.0.0.0:26657"'
+
+    # Fetched here so we could lookup it for address
+    - name: Fetch mpd genesis | testnet
+      fetch:
+        src: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/genesis.json"
+        dest: "fetch/genesis.json"
+        flat: true
+
+    - name: Get genesis.json as variable | testnet-bootstrap
+      include_vars:
+        name: "testnet_genesis"
+        file: "fetch/genesis.json"
+
+    - name: Set seeds in mpd config | testnet-bootstrap
+      lineinfile:
+        path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        regexp: '^seeds = '
+        line: 'seeds = "{{ testnet_genesis.app_state.genutil.gentxs[0].value.memo }}"'
+
+    - name: Set persistent_peers in mpd config | testnet-bootstrap
+      lineinfile:
+        path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        regexp: '^persistent_peers = '
+        line: 'persistent_peers = "{{ testnet_genesis.app_state.genutil.gentxs[0].value.memo }}"'
+
+    - name: Create fetch directory | testnet
+      become: false
+      local_action:
+        module: file
+        path: "fetch"
+        state: directory
+
+    - name: Fetch mpd config | testnet
+      fetch:
+        src: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+        dest: "fetch/config.toml"
+        flat: true
+
+    - name: Fetch mpd server | testnet
+      fetch:
+        src: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/server.toml"
+        dest: "fetch/server.toml"
+        flat: true
+
+- name: Sync the fetched nodes files on each host | testnet
+  synchronize:
+    src: "fetch"
+    dest: /opt/testnet/
+    archive: yes
+
+- name: Make base directory for testnet dependencies | testnet
+  file:
+    path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config"
+    mode: 0755
+    state: directory
+    recurse: true
+
+- name: Copy .mpd/config/config.toml from synced node0 data to local data | testnet
+  copy:
+    src: /opt/testnet/fetch/config.toml
+    dest: /opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml
+    remote_src: yes
+
+- name: Copy .mpd/config/genesis.json from synced node0 data to local data | testnet
+  copy:
+    src: /opt/testnet/fetch/genesis.json
+    dest: /opt/testnet/{{ inventory_hostname }}/.mpd/config/genesis.json
+    remote_src: yes
+
+- name: Copy .mpd/config/server.toml from synced node0 data to local data | testnet
+  copy:
+    src: /opt/testnet/fetch/server.toml
+    dest: /opt/testnet/{{ inventory_hostname }}/.mpd/config/server.toml
+    remote_src: yes
+
+- name: Make moniker to invetory_hostname in mpd config | testnet
+  lineinfile:
+    path: "/opt/testnet/{{ inventory_hostname }}/.mpd/config/config.toml"
+    regexp: '^moniker ='
+    line: 'moniker = "{{ inventory_hostname }}"'
+
+- name: Run testnet containers | testnet
+  docker_container:
+    name: testnet
+    restart_policy: unless-stopped
+    image: "{{ testnet_image }}"
+    ports:
+      - "0.0.0.0:26656:26656"
+      - "0.0.0.0:26657:26657"
+      - "0.0.0.0:{{ testnet_prometheus_port }}:{{ testnet_prometheus_port }}"
+    volumes:
+      - "/opt/testnet/{{ inventory_hostname }}:/root/"
