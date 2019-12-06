@@ -330,7 +330,6 @@ func (app *marketplaceApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBl
 	return app.mm.BeginBlock(ctx, req)
 }
 func (app *marketplaceApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	app.mpKeeper.CheckFinishedAuctions(ctx)
 	return app.mm.EndBlock(ctx, req)
 }
 func (app *marketplaceApp) LoadHeight(height int64) error {

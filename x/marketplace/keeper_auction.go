@@ -174,37 +174,3 @@ func (k *Keeper) BuyLotOnAuction(ctx sdk.Context, buyer, buyerBeneficiary sdk.Ac
 	}
 	return nil
 }
-
-func (k *Keeper) CheckFinishedAuctions(ctx sdk.Context) {
-	// TODO: is error handler necessary here?
-	logger := ctx.Logger()
-	iterator := k.GetAuctionLotsIterator(ctx)
-	timeNow := time.Now().UTC()
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var lot types.AuctionLot
-		k.cdc.MustUnmarshalJSON(iterator.Value(), &lot)
-		if lot.ExpirationTime.Before(timeNow) {
-			// there was at least one bid
-			if lot.LastBid != nil {
-				err := k.BuyLotOnAuction(ctx, lot.LastBid.Bidder, lot.LastBid.BuyerBeneficiary, lot.LastBid.Bid, &lot, lot.LastBid.BeneficiaryCommission)
-				if err != nil {
-					logger.Error("failed to finish auction", "lot", lot.String(), "error", err)
-					// return
-				}
-			} else {
-				// no bids; return to owner
-				nft, err := k.GetNFT(ctx, lot.NFTID)
-				if err != nil {
-					logger.Error("failed to get nft", "lot", lot.String(), "error", err)
-					//return
-				}
-				err = k.removeNFTFromAuction(ctx, nft)
-				if err != nil {
-					logger.Error("failed to remove from auction", "lot", lot.String(), "error", err)
-					//return
-				}
-			}
-		}
-	}
-}
