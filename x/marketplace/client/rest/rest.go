@@ -14,7 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	authTypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/corestartio/marketplace/x/marketplace/types"
 
 	"github.com/gorilla/mux"
 )

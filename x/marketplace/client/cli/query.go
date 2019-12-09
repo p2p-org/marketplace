@@ -6,7 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/corestartio/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 )
 

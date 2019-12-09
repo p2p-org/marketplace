@@ -11,9 +11,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/dgamingfoundation/marketplace/common"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/config"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/corestartio/marketplace/common"
+	"github.com/corestartio/marketplace/x/marketplace/config"
+	"github.com/corestartio/marketplace/x/marketplace/types"
 	pl "github.com/prometheus/common/log"
 )
 

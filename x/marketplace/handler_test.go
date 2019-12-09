@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/dgamingfoundation/marketplace/x/marketplace"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/corestartio/marketplace/x/marketplace"
+	"github.com/corestartio/marketplace/x/marketplace/types"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"

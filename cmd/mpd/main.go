@@ -20,7 +20,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/staking"
-	app "github.com/dgamingfoundation/marketplace"
+	app "github.com/corestartio/marketplace"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	abci "github.com/tendermint/tendermint/abci/types"

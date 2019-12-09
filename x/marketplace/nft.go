@@ -5,8 +5,8 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/dgamingfoundation/marketplace/common"
-	"github.com/dgamingfoundation/marketplace/x/marketplace/types"
+	"github.com/corestartio/marketplace/common"
+	"github.com/corestartio/marketplace/x/marketplace/types"
 )
 
 // NFTModuleMarketplace overrides the NFT module for custom handlers
