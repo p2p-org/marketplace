@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/corestartio/marketplace/x/marketplace/types"
+	"github.com/corestario/marketplace/x/marketplace/types"
 )
 
 var configTemplate *template.Template

@@ -1,4 +1,4 @@
-module github.com/corestartio/marketplace
+module github.com/corestario/marketplace
 
 go 1.12
 
@@ -16,7 +16,6 @@ require (
 	github.com/tendermint/go-amino v0.15.0
 	github.com/tendermint/tendermint v0.32.6
 	github.com/tendermint/tm-db v0.2.0
-	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20190327125643-d831d65fe17d // indirect
 )
 

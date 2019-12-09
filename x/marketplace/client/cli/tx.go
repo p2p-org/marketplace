@@ -13,7 +13,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-	"github.com/corestartio/marketplace/x/marketplace/types"
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

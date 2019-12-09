@@ -7,7 +7,7 @@ RUN apk add --no-cache bash zsh ca-certificates git libc-dev make build-base
 
 ENV PATH /go/bin:$PATH
 ENV GOPATH /go
-ENV MARKETPLACEPATH /go/src/github.com/corestartio/marketplace
+ENV MARKETPLACEPATH /go/src/github.com/corestario/marketplace
 RUN mkdir -p $MARKETPLACEPATH
 
 COPY . $MARKETPLACEPATH

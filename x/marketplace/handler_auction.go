@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/corestartio/marketplace/common"
-	"github.com/corestartio/marketplace/x/marketplace/types"
+	"github.com/corestario/marketplace/common"
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/tendermint/tendermint/types/time"
 )
 

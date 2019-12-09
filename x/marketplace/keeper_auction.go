@@ -6,7 +6,7 @@ import (
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/corestartio/marketplace/x/marketplace/types"
+	"github.com/corestario/marketplace/x/marketplace/types"
 )
 
 func (k *Keeper) PutNFTOnAuction(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress,
