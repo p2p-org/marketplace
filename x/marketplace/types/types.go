@@ -231,3 +231,13 @@ func NewNFTInfo(nft *NFT, token exported.NFT) *NFTInfo {
 		NFTMetaData: NewNFTMetaData(token),
 	}
 }
+
+// struct for data in IBC packet
+type NFTPacketData struct {
+	CollectionDenom  string `json:"denom"`
+	ID               string `json:"id"`
+	TokenMetadataURI string `json:"tokenMetadataUri"`
+	Sender           string `json:"sender"`
+	Receiver         string `json:"receiver"`
+	Source           bool   `json:"source"`
+}

@@ -3,6 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	transferCli "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer/client/cli"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +50,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdBatchRemoveFromMarket(cdc),
 		GetCmdBatchBuyOnMarket(cdc),
 		GetCmdRemoveOffer(cdc),
+		GetTransferNFTTxCmd(cdc),
 	)...)
 
 	return marketplaceTxCmd
@@ -615,5 +618,36 @@ func GetCmdBatchBuyOnMarket(cdc *codec.Codec) *cobra.Command {
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
 		"beneficiary fee, if left blank will be set to default")
+	return cmd
+}
+
+func GetTransferNFTTxCmd(cdc *codec.Codec) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "transferNFT [src-port] [src-channel] [receiver] [tokenID]",
+		Short: "Transfer fungible token through IBC",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			ctx := context.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
+
+			sender := ctx.GetFromAddress()
+			srcPort := args[0]
+			srcChannel := args[1]
+			receiver, err := sdk.AccAddressFromBech32(args[2])
+			if err != nil {
+				return err
+			}
+
+			source := viper.GetBool(transferCli.FlagSource)
+
+			msg := types.NewMsgTransferNFTByIBC(srcPort, srcChannel, args[3], sender, receiver, source)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return utils.GenerateOrBroadcastMsgs(ctx, txBldr, []sdk.Msg{msg})
+		},
+	}
+	cmd.Flags().Bool(transferCli.FlagSource, false, "Pass flag for sending token from the source chain")
 	return cmd
 }

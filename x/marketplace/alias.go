@@ -48,4 +48,5 @@ type (
 	MsgMakeOffer              = types.MsgMakeOffer
 	MsgAcceptOffer            = types.MsgAcceptOffer
 	MsgRemoveOffer            = types.MsgRemoveOffer
+	MsgTransferNFTByIBC       = types.MsgTransferNFTByIBC
 )

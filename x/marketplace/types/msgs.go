@@ -1020,3 +1020,50 @@ func (m MsgRemoveOffer) GetSignBytes() []byte {
 func (m MsgRemoveOffer) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{m.Buyer}
 }
+
+type MsgTransferNFTByIBC struct {
+	SourcePort    string         `json:"source_port" yaml:"source_port"`       // the port on which the packet will be sent
+	SourceChannel string         `json:"source_channel" yaml:"source_channel"` // the channel by which the packet will be sent
+	TokenID       string         `json:"token_id" yaml:"token_id"`             // the id of token to be transferred
+	Sender        sdk.AccAddress `json:"sender" yaml:"sender"`                 // the sender address
+	Receiver      sdk.AccAddress `json:"receiver" yaml:"receiver"`             // the recipient address on the destination chain
+	Source        bool           `json:"source" yaml:"source"`                 // indicates if the sending chain is the source chain of the tokens to be transferred
+}
+
+// NewMsgTransfer creates a new MsgTransfer instance
+func NewMsgTransferNFTByIBC(sourcePort, sourceChannel string, tokenID string, sender, receiver sdk.AccAddress, source bool,
+) MsgTransferNFTByIBC {
+	return MsgTransferNFTByIBC{
+		SourcePort:    sourcePort,
+		SourceChannel: sourceChannel,
+		TokenID:       tokenID,
+		Sender:        sender,
+		Receiver:      receiver,
+		Source:        source,
+	}
+}
+
+// Route implements sdk.Msg
+func (MsgTransferNFTByIBC) Route() string {
+	return RouterKey
+}
+
+// Type implements sdk.Msg
+func (MsgTransferNFTByIBC) Type() string {
+	return "transferNFT"
+}
+
+// ValidateBasic implements sdk.Msg
+func (msg MsgTransferNFTByIBC) ValidateBasic() sdk.Error {
+	return nil
+}
+
+// GetSignBytes implements sdk.Msg
+func (msg MsgTransferNFTByIBC) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+}
+
+// GetSigners implements sdk.Msg
+func (msg MsgTransferNFTByIBC) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Sender}
+}

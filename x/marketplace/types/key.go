@@ -98,4 +98,5 @@ const (
 	MaxTokenURILength    = 32000
 	MaxDenomLength       = 16
 	MinDenomLength       = 3
+	IBCNFTPort           = "transfernft"
 )

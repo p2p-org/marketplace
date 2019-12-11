@@ -51,9 +51,7 @@ func testnetCmd(ctx *server.Context, cdc *codec.Codec,
 		Short: "Initialize files for a Marketplace testnet",
 		Long: `testnet will create "v" number of directories and populate each with
 necessary files (private validator, genesis, config, etc.).
-
 Note, strict routability for addresses is turned off in the config file.
-
 Example:
 	mpd testnet --v 4 --output-dir ./output --starting-ip-address 192.168.10.2
 	`,
@@ -106,6 +104,8 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 		chainID = "chain-" + cmn.RandStr(6)
 	}
 
+	config.Consensus.CreateEmptyBlocks = false
+
 	monikers := make([]string, numValidators)
 	nodeIDs := make([]string, numValidators)
 	valPubKeys := make([]crypto.PubKey, numValidators)
@@ -114,8 +114,8 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 	mpConfig.MinGasPrices = minGasPrices
 
 	var (
-		accs     []authexported.GenesisAccount
-		genFiles []string
+		genAccounts []authexported.GenesisAccount
+		genFiles    []string
 	)
 
 	// generate private keys, node IDs, and initial transactions
@@ -193,16 +193,11 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 
 		accTokens := sdk.TokensFromConsensusPower(1000)
 		accStakingTokens := sdk.TokensFromConsensusPower(500)
-		accs = append(accs, auth.NewBaseAccount(
-			addr,
-			sdk.Coins{
-				sdk.NewCoin(fmt.Sprintf("%stoken", nodeDirName), accTokens),
-				sdk.NewCoin(sdk.DefaultBondDenom, accStakingTokens),
-			},
-			valPubKeys[i],
-			uint64(i),
-			0,
-		))
+		coins := sdk.Coins{
+			sdk.NewCoin(fmt.Sprintf("%stoken", nodeDirName), accTokens),
+			sdk.NewCoin(sdk.DefaultBondDenom, accStakingTokens),
+		}
+		genAccounts = append(genAccounts, auth.NewBaseAccount(addr, coins.Sort(), nil, 0, 0))
 
 		valTokens := sdk.TokensFromConsensusPower(100)
 		msg := staking.NewMsgCreateValidator(
@@ -213,10 +208,12 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 			staking.NewCommissionRates(sdk.ZeroDec(), sdk.ZeroDec(), sdk.ZeroDec()),
 			sdk.OneInt(),
 		)
+
 		kb, err := keys.NewKeyBaseFromDir(clientDir)
 		if err != nil {
 			return err
 		}
+
 		tx := auth.NewStdTx([]sdk.Msg{msg}, auth.StdFee{}, []auth.StdSignature{}, memo)
 		txBldr := auth.NewTxBuilderFromCLI().WithChainID(chainID).WithMemo(memo).WithKeybase(kb)
 
@@ -238,13 +235,13 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 			return err
 		}
 
-		// TODO: Rename config file to server.toml as it's not particular to mp
+		// TODO: Rename config file to server.toml as it's not particular to Gaia
 		// (REF: https://github.com/cosmos/cosmos-sdk/issues/4125).
 		mpConfigFilePath := filepath.Join(nodeDir, "config/mpd.toml")
 		srvconfig.WriteConfigFile(mpConfigFilePath, mpConfig)
 	}
 
-	if err := initGenFiles(cdc, mbm, chainID, accs, genFiles, numValidators); err != nil {
+	if err := initGenFiles(cdc, mbm, chainID, genAccounts, genFiles, numValidators); err != nil {
 		return err
 	}
 
@@ -260,14 +257,19 @@ func InitTestnet(cmd *cobra.Command, config *tmconfig.Config, cdc *codec.Codec,
 	return nil
 }
 
-func initGenFiles(cdc *codec.Codec, mbm module.BasicManager, chainID string,
-	accs []authexported.GenesisAccount, genFiles []string, numValidators int) error {
+func initGenFiles(
+	cdc *codec.Codec, mbm module.BasicManager, chainID string,
+	genAccounts []authexported.GenesisAccount, genFiles []string, numValidators int,
+) error {
 
 	appGenState := mbm.DefaultGenesis()
 
 	// set the accounts in the genesis state
-	genesisState := genutil.GetGenesisStateFromAppState(cdc, appGenState)
-	appGenState = genutil.SetGenesisStateInAppState(cdc, appGenState, genesisState)
+	authDataBz := appGenState[auth.ModuleName]
+	var authGenState auth.GenesisState
+	cdc.MustUnmarshalJSON(authDataBz, &authGenState)
+	authGenState.Accounts = genAccounts
+	appGenState[auth.ModuleName] = cdc.MustMarshalJSON(authGenState)
 
 	appGenStateJSON, err := codec.MarshalJSONIndent(cdc, appGenState)
 	if err != nil {

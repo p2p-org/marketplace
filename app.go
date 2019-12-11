@@ -13,6 +13,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	distr "github.com/cosmos/cosmos-sdk/x/distribution"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/cosmos/cosmos-sdk/x/ibc"
+	ibctransfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
@@ -50,6 +52,7 @@ var (
 		slashing.AppModuleBasic{},
 		supply.AppModuleBasic{},
 		nft.AppModuleBasic{},
+		ibc.AppModuleBasic{},
 
 		marketplace.AppModule{},
 	)
@@ -80,6 +83,7 @@ type marketplaceApp struct {
 	keyParams   *sdk.KVStoreKey
 	tkeyParams  *sdk.TransientStoreKey
 	keySlashing *sdk.KVStoreKey
+	keyIBC      *sdk.KVStoreKey
 
 	// Keepers
 	accountKeeper  auth.AccountKeeper
@@ -90,6 +94,7 @@ type marketplaceApp struct {
 	distrKeeper    distr.Keeper
 	paramsKeeper   params.Keeper
 	nftKeeper      *nft.Keeper
+	ibcKeeper      ibc.Keeper
 
 	mpKeeper *marketplace.Keeper
 
@@ -102,13 +107,13 @@ type marketplaceApp struct {
 }
 
 // NewMarketplaceApp is a constructor function for marketplaceApp
-func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
+func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam.BaseApp)) *marketplaceApp {
 
 	// First define the top level codec that will be shared by the different modules
 	cdc := MakeCodec()
 
 	// BaseApp handles interactions with Tendermint through the ABCI protocol
-	bApp := bam.NewBaseApp(appName, logger, db, auth.DefaultTxDecoder(cdc))
+	bApp := bam.NewBaseApp(appName, logger, db, auth.DefaultTxDecoder(cdc), baseAppOptions...)
 
 	// Here you initialize your application with the store keys it requires
 	var app = &marketplaceApp{
@@ -126,6 +131,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		keyParams:   sdk.NewKVStoreKey(params.StoreKey),
 		tkeyParams:  sdk.NewTransientStoreKey(params.TStoreKey),
 		keySlashing: sdk.NewKVStoreKey(slashing.StoreKey),
+		keyIBC:      sdk.NewKVStoreKey(ibc.StoreKey),
 
 		keyMP:               sdk.NewKVStoreKey(marketplace.StoreKey),
 		keyRegisterCurrency: sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey),
@@ -158,13 +164,14 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	)
 
 	maccPerms := map[string][]string{
-		auth.FeeCollectorName:     nil,
-		distr.ModuleName:          nil,
-		nft.ModuleName:            nil,
-		mint.ModuleName:           {supply.Minter},
-		staking.BondedPoolName:    {supply.Burner, supply.Staking},
-		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
-		bank.ModuleName:           {supply.Minter, supply.Burner, supply.Staking},
+		auth.FeeCollectorName:              nil,
+		distr.ModuleName:                   nil,
+		nft.ModuleName:                     nil,
+		mint.ModuleName:                    {supply.Minter},
+		staking.BondedPoolName:             {supply.Burner, supply.Staking},
+		staking.NotBondedPoolName:          {supply.Burner, supply.Staking},
+		bank.ModuleName:                    {supply.Minter, supply.Burner, supply.Staking},
+		ibctransfer.GetModuleAccountName(): {supply.Minter, supply.Burner},
 	}
 	app.supplyKeeper = supply.NewKeeper(app.cdc, app.keySupply, app.accountKeeper,
 		app.bankKeeper, maccPerms)
@@ -178,6 +185,8 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		staking.DefaultCodespace,
 	)
 
+	app.ibcKeeper = ibc.NewKeeper(app.cdc, app.keyIBC, ibc.DefaultCodespace, app.bankKeeper, app.supplyKeeper)
+
 	// The NFTKeeper is the Keeper from the module NFTs.
 	newKeeper := nft.NewKeeper(
 		app.cdc,
@@ -185,6 +194,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 	)
 	app.nftKeeper = &newKeeper
 
+	ibcModule := ibc.NewAppModule(app.ibcKeeper)
 	nftModule := nft.NewAppModule(newKeeper)
 
 	app.distrKeeper = distr.NewKeeper(
@@ -230,9 +240,11 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.nftKeeper,
 		&app.supplyKeeper,
 		&app.accountKeeper,
+		&app.ibcKeeper,
 	)
 
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
+	overriddenIBCModule := marketplace.NewIBCModuleMarketplace(ibcModule, &app.ibcKeeper, app.mpKeeper)
 
 	app.mm = module.NewManager(
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
@@ -245,6 +257,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 
 		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper, app.nftKeeper),
 		overriddenNFTModule,
+		overriddenIBCModule,
 	)
 
 	app.mm.SetOrderBeginBlockers(distr.ModuleName, slashing.ModuleName)
@@ -278,7 +291,6 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 			app.accountKeeper, app.supplyKeeper, auth.DefaultSigVerificationGasConsumer,
 		),
 	)
-
 	app.MountStores(
 		app.keyMain,
 		app.keyAccount,
@@ -295,6 +307,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB) *marketplaceApp {
 		app.keyMP,
 		app.keyRegisterCurrency,
 		app.keyAuction,
+		app.keyIBC,
 	)
 
 	err := app.LoadLatestVersion(app.keyMain)
