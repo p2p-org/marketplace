@@ -444,6 +444,11 @@ func GetCmdAcceptOffer(cdc *codec.Codec) *cobra.Command {
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
+			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			if err != nil {
+				return err
+			}
+			txBldr = txBldr.WithGas(5 * txBldr.Gas())
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},

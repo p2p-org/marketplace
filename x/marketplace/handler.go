@@ -203,6 +203,10 @@ func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk
 		BeneficiaryCommission: msg.BeneficiaryCommission,
 	})
 
+	if _, err := mpKeeper.coinKeeper.SubtractCoins(ctx, msg.Buyer, msg.Price); err != nil {
+		return wrapError("failed to MakeOffer", err)
+	}
+
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
 	}
@@ -278,6 +282,11 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 		}
 	}
 
+	// Return frozen funds to the buyer so that doNFTCommissions works correctly
+	if _, err = mpKeeper.coinKeeper.AddCoins(ctx, offer.Buyer, offer.Price); err != nil {
+		return wrapError("failed to AcceptOffer", err)
+	}
+
 	priceAfterCommission, err := doNFTCommissions(
 		ctx,
 		mpKeeper,
@@ -292,13 +301,15 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: failed to pay commissions: %v", err)).Result()
 	}
 
-	err = mpKeeper.coinKeeper.SendCoins(ctx, offer.Buyer, token.Owner, priceAfterCommission)
-	if err != nil {
+	if err = mpKeeper.coinKeeper.SendCoins(ctx, offer.Buyer, token.Owner, priceAfterCommission); err != nil {
 		return sdk.ErrInsufficientCoins("failed to AcceptOffer: buyer does not have enough coins").Result()
 	}
 
+	if ok := token.RemoveOffer(offer.ID, offer.Buyer); !ok {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)).Result()
+	}
+
 	token.Owner = offer.Buyer
-	token.Offers = nil
 	token.SetSellerBeneficiary(sdk.AccAddress{})
 	token.SetStatus(types.NFTStatusDefault)
 
@@ -328,9 +339,18 @@ func handleMsgRemoveOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveOffer)
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: %v", err)).Result()
 	}
 
-	ok := token.RemoveOffer(msg.OfferID, msg.Buyer)
+	offer, ok := token.GetOffer(msg.OfferID)
 	if !ok {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)).Result()
+	}
+
+	ok = token.RemoveOffer(msg.OfferID, msg.Buyer)
+	if !ok {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)).Result()
+	}
+
+	if _, err := mpKeeper.coinKeeper.AddCoins(ctx, msg.Buyer, offer.Price); err != nil {
+		return wrapError("failed to RemoveOffer", err)
 	}
 
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {

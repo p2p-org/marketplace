@@ -95,6 +95,15 @@ func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper 
 
 func HandleMsgBurnNFTMarketplace(ctx sdk.Context, msg nft.MsgBurnNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) sdk.Result {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnNFT)
+	token, err := mpKeeper.GetNFT(ctx, msg.ID)
+	if err != nil {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BurnNFT: no token with ID %s", msg.ID)).Result()
+	}
+	for _, offer := range token.Offers {
+		if _, err := mpKeeper.coinKeeper.AddCoins(ctx, offer.Buyer, offer.Price); err != nil {
+			return wrapError("failed to BurnNFT", err)
+		}
+	}
 	res := nft.HandleMsgBurnNFT(ctx, msg, *nftKeeper)
 	if !res.IsOK() {
 		return res
