@@ -56,8 +56,14 @@ func handleMsgRemoveNFTFromAuction(ctx sdk.Context, k *Keeper, msg MsgRemoveNFTF
 		return wrapError(failMsg, err)
 	}
 
-	if lot.ExpirationTime.Before(time.Now().UTC()) {
-		return wrapError(failMsg, fmt.Errorf("auction is already finished"))
+	nft, err := k.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return wrapError(failMsg, err)
+	}
+
+	if !nft.Owner.Equals(msg.Owner) {
+		return wrapError(failMsg,
+			fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner))
 	}
 
 	// return bid to last bidder if exists
@@ -98,18 +104,30 @@ func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sd
 		return wrapError(failMsg, err)
 	}
 
-	if lot.ExpirationTime.Before(time.Now().UTC()) {
-		return wrapError(failMsg, fmt.Errorf("auction is already finished"))
+	nft, err := k.GetNFT(ctx, msg.TokenID)
+	if err != nil {
+		return wrapError(failMsg, err)
 	}
+
+	// auction time has not expired yet
+	if lot.ExpirationTime.After(time.Now().UTC()) {
+		if !nft.Owner.Equals(msg.Owner) {
+			return wrapError(failMsg,
+				fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner))
+		}
+	}
+
+	owner := nft.Owner.String()
 
 	// no bids on lot
 	if lot.LastBid != nil {
+		owner = lot.LastBid.Bidder.String()
 		if err := k.BuyLotOnAuction(ctx, lot.LastBid.Bidder, lot.LastBid.BuyerBeneficiary,
 			lot.LastBid.Bid, lot, lot.LastBid.BeneficiaryCommission); err != nil {
 			return wrapError(failMsg, err)
 		}
 	} else {
-		if err := k.RemoveNFTFromAuction(ctx, msg.TokenID, msg.Owner); err != nil {
+		if err := k.RemoveNFTFromAuction(ctx, msg.TokenID, nft.Owner); err != nil {
 			return wrapError(failMsg, err)
 		}
 	}
@@ -119,7 +137,7 @@ func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sd
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
 			msg.Type(),
-			sdk.NewAttribute(types.AttributeKeyOwner, lot.LastBid.Bidder.String()),
+			sdk.NewAttribute(types.AttributeKeyOwner, owner),
 			sdk.NewAttribute(types.AttributeKeyNFTID, msg.TokenID),
 		),
 		sdk.NewEvent(

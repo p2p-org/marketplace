@@ -99,4 +99,11 @@ const (
 	MaxDenomLength       = 16
 	MinDenomLength       = 3
 	IBCNFTPort           = "transfernft"
+
+	DefaultFinishAuctionHost    = "localhost"
+	DefaultFinishAuctionPort    = 1317
+	DefaultChainName            = "mpchain"
+	DefaultFinishingAccountName = "dgaming"
+	DefaultFinishingAccountPass = "12345678"
+	DefaultFinishingAccountAddr = "cosmos1tctr64k4en25uvet2k2tfkwkh0geyrv8fvuvet"
 )

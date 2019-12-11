@@ -17,7 +17,7 @@ mpcli tx marketplace bid [nft_id] [buyerBeneficiary] 100token --from user2
 
 mpcli tx marketplace buyout [nft_id] [buyerBeneficiary] --from user2
 
-mpcli tx remove_from_auction [nft_id] --from user1
+mpcli tx marketplace remove_from_auction [nft_id] --from user1
 
-mpcli tx finish_auction [nft_id] --from user1
+mpcli tx marketplace finish_auction [nft_id] --from user1
 

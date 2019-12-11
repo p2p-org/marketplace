@@ -4,11 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/cosmos/cosmos-sdk/x/ibc"
 	"github.com/cosmos/cosmos-sdk/x/ibc/04-channel/exported"
 	transfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
-	"strings"
 
+	"github.com/corestario/marketplace/common"
+	"github.com/corestario/marketplace/x/marketplace/config"
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
@@ -18,9 +24,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/corestario/marketplace/common"
-	"github.com/corestario/marketplace/x/marketplace/config"
-	"github.com/corestario/marketplace/x/marketplace/types"
 	pl "github.com/prometheus/common/log"
 )
 
@@ -39,6 +42,7 @@ type Keeper struct {
 	supplyKeeper             *supply.Keeper
 	accKeeper                *auth.AccountKeeper
 	ibcKeeper                *ibc.Keeper
+	httpCli                  *http.Client
 }
 
 // NewKeeper creates new instances of the marketplace Keeper
@@ -71,6 +75,7 @@ func NewKeeper(
 		supplyKeeper:             supplyKeeper,
 		accKeeper:                accKeeper,
 		ibcKeeper:                ibcKeeper,
+		httpCli:                  &http.Client{Timeout: time.Second * 5},
 	}
 }
 

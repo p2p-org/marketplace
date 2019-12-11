@@ -186,24 +186,16 @@ func (k *Keeper) CheckFinishedAuctions(ctx sdk.Context) {
 		k.cdc.MustUnmarshalJSON(iterator.Value(), &lot)
 		if lot.ExpirationTime.Before(timeNow) {
 			// there was at least one bid
-			if lot.LastBid != nil {
-				err := k.BuyLotOnAuction(ctx, lot.LastBid.Bidder, lot.LastBid.BuyerBeneficiary, lot.LastBid.Bid, &lot, lot.LastBid.BeneficiaryCommission)
-				if err != nil {
-					logger.Error("failed to finish auction", "lot", lot.String(), "error", err)
-					// return
-				}
-			} else {
-				// no bids; return to owner
-				nft, err := k.GetNFT(ctx, lot.NFTID)
-				if err != nil {
-					logger.Error("failed to get nft", "lot", lot.String(), "error", err)
-					//return
-				}
-				err = k.removeNFTFromAuction(ctx, nft)
-				if err != nil {
-					logger.Error("failed to remove from auction", "lot", lot.String(), "error", err)
-					//return
-				}
+			addr, err := sdk.AccAddressFromBech32(k.config.FinishingAccountAddr)
+			if err != nil {
+				logger.Error("failed to get acc address from bench32", "bench", k.config.FinishingAccountAddr, "error", err)
+				continue
+			}
+
+			acc := k.accKeeper.GetAccount(ctx, addr)
+			if err := k.SendFinish(lot.NFTID, acc); err != nil {
+				logger.Error("failed to sent finish tx", "lot", lot.NFTID, "error", err)
+				continue
 			}
 		}
 	}
