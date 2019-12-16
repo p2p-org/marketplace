@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/corestario/marketplace/common"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/types/time"
 )
 
@@ -18,8 +18,13 @@ func handleMsgPutNFTOnAuction(ctx sdk.Context, k *Keeper, msg types.MsgPutNFTOnA
 		return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist"))
 	}
 
-	if !msg.BuyoutPrice.IsZero() && !k.IsDenomExist(ctx, msg.BuyoutPrice) {
-		return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist"))
+	if !msg.BuyoutPrice.IsZero() {
+		if !k.IsDenomExist(ctx, msg.BuyoutPrice) {
+			return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist"))
+		}
+		if msg.OpeningPrice.IsAnyGTE(msg.BuyoutPrice) {
+			return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "buyout price is too low"))
+		}
 	}
 
 	if err := k.PutNFTOnAuction(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.OpeningPrice,

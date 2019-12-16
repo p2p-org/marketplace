@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (k *Keeper) PutNFTOnAuction(ctx sdk.Context, id string, owner, beneficiary sdk.AccAddress,
@@ -150,6 +150,10 @@ func (k *Keeper) BuyLotOnAuction(ctx sdk.Context, buyer, buyerBeneficiary sdk.Ac
 		price,
 		commission,
 	)
+	if err != nil {
+		RollbackCommissions(ctx, k, logger, balances)
+		return err
+	}
 
 	err = k.coinKeeper.SendCoins(ctx, buyer, nft.Owner, priceAfterCommission)
 	if err != nil {
