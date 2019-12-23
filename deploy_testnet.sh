@@ -4,7 +4,7 @@ set -ex
 export_vars() {
   export TERRAFORM_BACKEND=""
   export TESTNET_NODES=""
-  expoty TERRAFORM_DO_TOKEN=""
+  export TERRAFORM_DO_TOKEN=""
   export NETWORK_NAME=""
   export TESTNET_CLIENTS_AMOUNT=""
   export TESTNET_CLIENT_PASSWORD=""
