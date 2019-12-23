@@ -7,28 +7,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/x/mint"
-	"github.com/cosmos/cosmos-sdk/x/supply"
-	"github.com/cosmos/modules/incubator/nft"
+	app "github.com/corestario/marketplace"
 	"github.com/corestario/marketplace/common"
-	"github.com/prometheus/client_golang/prometheus"
-
+	"github.com/corestario/marketplace/x/marketplace"
+	"github.com/corestario/marketplace/x/marketplace/config"
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	distr "github.com/cosmos/cosmos-sdk/x/distribution"
 	distrTypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	"github.com/cosmos/cosmos-sdk/x/ibc"
+	ibctransfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
+	"github.com/cosmos/cosmos-sdk/x/mint"
 	"github.com/cosmos/cosmos-sdk/x/mock"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	app "github.com/corestario/marketplace"
-	"github.com/corestario/marketplace/x/marketplace"
-	"github.com/corestario/marketplace/x/marketplace/config"
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/cosmos/cosmos-sdk/x/supply"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -47,6 +48,7 @@ type marketplaceKeeperTest struct {
 	ms             store.CommitMultiStore
 	marketKeeper   *marketplace.Keeper
 	nftKeeper      *nft.Keeper
+	ibcKeeper      ibc.Keeper
 	dbDir          string
 	addrs          []sdk.AccAddress
 }
@@ -82,8 +84,10 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	keyDistr := sdk.NewKVStoreKey(distr.StoreKey)
 	keySupply := sdk.NewKVStoreKey(supply.StoreKey)
 	keyAuctionStore := sdk.NewKVStoreKey(marketplace.AuctionKey)
+	keyDeletedNFT := sdk.NewKVStoreKey(marketplace.DeletedNFTKey)
 	keyNFT := sdk.NewKVStoreKey(nft.StoreKey)
 	keyRegisterCurrency := sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey)
+	keyIBC := sdk.NewKVStoreKey(ibc.StoreKey)
 
 	paramsKeeper := params.NewKeeper(cdc, keyParams, tkeyParams, params.DefaultCodespace)
 
@@ -108,13 +112,14 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	)
 
 	maccPerms := map[string][]string{
-		auth.FeeCollectorName:     nil,
-		distr.ModuleName:          nil,
-		nft.ModuleName:            nil,
-		mint.ModuleName:           {supply.Minter},
-		staking.BondedPoolName:    {supply.Burner, supply.Staking},
-		staking.NotBondedPoolName: {supply.Burner, supply.Staking},
-		bank.ModuleName:           {supply.Minter, supply.Burner, supply.Staking},
+		auth.FeeCollectorName:              nil,
+		distr.ModuleName:                   nil,
+		nft.ModuleName:                     nil,
+		mint.ModuleName:                    {supply.Minter},
+		staking.BondedPoolName:             {supply.Burner, supply.Staking},
+		staking.NotBondedPoolName:          {supply.Burner, supply.Staking},
+		bank.ModuleName:                    {supply.Minter, supply.Burner, supply.Staking},
+		ibctransfer.GetModuleAccountName(): {supply.Minter, supply.Burner},
 	}
 
 	mpKeeperTest.supplyKeeper = supply.NewKeeper(cdc, keySupply, mpKeeperTest.accountKeeper,
@@ -159,9 +164,11 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	mpKeeperTest.ms.MountStoreWithDB(keyStaking, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyDistr, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyRegisterCurrency, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keyDeletedNFT, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyNFT, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keyAuctionStore, sdk.StoreTypeIAVL, db)
 	mpKeeperTest.ms.MountStoreWithDB(keySupply, sdk.StoreTypeIAVL, db)
+	mpKeeperTest.ms.MountStoreWithDB(keyIBC, sdk.StoreTypeIAVL, db)
 
 	if err := mpKeeperTest.ms.LoadLatestVersion(); err != nil {
 		return nil, err
@@ -173,12 +180,26 @@ func createMarketplaceKeeperTest() (*marketplaceKeeperTest, error) {
 	)
 	mpKeeperTest.nftKeeper = &newKeeper
 
+	mpKeeperTest.ibcKeeper = ibc.NewKeeper(cdc, keyIBC, ibc.DefaultCodespace, mpKeeperTest.bankKeeper, mpKeeperTest.supplyKeeper)
+
 	metr := &common.MsgMetrics{NumMsgs: prometheus.NewCounterVec(prometheus.CounterOpts{},
 		[]string{common.PrometheusLabelStatus, common.PrometheusLabelMsgType})}
-	mpKeeperTest.marketKeeper = marketplace.NewKeeper(mpKeeperTest.bankKeeper, mpKeeperTest.stakingKeeper,
-		mpKeeperTest.distrKeeper, mpStore, keyRegisterCurrency, keyAuctionStore, cdc,
-		config.DefaultMPServerConfig(), metr,
-		mpKeeperTest.nftKeeper, &mpKeeperTest.supplyKeeper, &mpKeeperTest.accountKeeper)
+	mpKeeperTest.marketKeeper = marketplace.NewKeeper(
+		mpKeeperTest.bankKeeper,
+		mpKeeperTest.stakingKeeper,
+		mpKeeperTest.distrKeeper,
+		mpStore,
+		keyRegisterCurrency,
+		keyAuctionStore,
+		keyDeletedNFT,
+		cdc,
+		config.DefaultMPServerConfig(),
+		metr,
+		mpKeeperTest.nftKeeper,
+		&mpKeeperTest.supplyKeeper,
+		&mpKeeperTest.accountKeeper,
+		&mpKeeperTest.ibcKeeper,
+	)
 
 	mpKeeperTest.ctx = sdk.NewContext(mpKeeperTest.ms, abci.Header{}, false, log.NewNopLogger())
 	mpKeeperTest.marketKeeper.RegisterBasicDenoms(mpKeeperTest.ctx)

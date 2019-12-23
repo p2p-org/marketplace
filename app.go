@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/corestario/marketplace/common"
+	"github.com/corestario/marketplace/x/marketplace"
+	"github.com/corestario/marketplace/x/marketplace/config"
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,9 +24,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/corestario/marketplace/common"
-	"github.com/corestario/marketplace/x/marketplace"
-	"github.com/corestario/marketplace/x/marketplace/config"
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -101,6 +101,7 @@ type marketplaceApp struct {
 	keyMP               *sdk.KVStoreKey
 	keyRegisterCurrency *sdk.KVStoreKey
 	keyAuction          *sdk.KVStoreKey
+	keyDeletedNFT       *sdk.KVStoreKey
 
 	// Module Manager
 	mm *module.Manager
@@ -136,6 +137,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 		keyMP:               sdk.NewKVStoreKey(marketplace.StoreKey),
 		keyRegisterCurrency: sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey),
 		keyAuction:          sdk.NewKVStoreKey(marketplace.AuctionKey),
+		keyDeletedNFT:       sdk.NewKVStoreKey(marketplace.DeletedNFTKey),
 	}
 
 	// The ParamsKeeper handles parameter storage for the application
@@ -234,6 +236,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 		app.keyMP,
 		app.keyRegisterCurrency,
 		app.keyAuction,
+		app.keyDeletedNFT,
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
@@ -308,6 +311,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 		app.keyRegisterCurrency,
 		app.keyAuction,
 		app.keyIBC,
+		app.keyDeletedNFT,
 	)
 
 	err := app.LoadLatestVersion(app.keyMain)

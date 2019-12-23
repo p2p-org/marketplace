@@ -68,7 +68,7 @@ func (m *NFT) SetPrice(price sdk.Coins) {
 }
 
 func (m *NFT) IsOnSale() bool {
-	return m.Status > NFTStatusDefault && m.Status < NFTStatusUndefined
+	return m.Status == NFTStatusOnAuction || m.Status == NFTStatusOnMarket
 }
 
 func (m *NFT) IsOnMarket() bool {
@@ -77,6 +77,10 @@ func (m *NFT) IsOnMarket() bool {
 
 func (m *NFT) IsOnAuction() bool {
 	return m.Status == NFTStatusOnAuction
+}
+
+func (m *NFT) IsActive() bool {
+	return m.Status == NFTStatusDefault || m.Status == NFTStatusOnMarket || m.Status == NFTStatusOnAuction
 }
 
 func (m *NFT) SetStatus(status NFTStatus) {

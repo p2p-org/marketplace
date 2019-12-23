@@ -33,6 +33,7 @@ type Keeper struct {
 	stakingKeeper            staking.Keeper
 	distrKeeper              distribution.Keeper
 	storeKey                 sdk.StoreKey // Unexposed key to access store from sdk.Context
+	deletedStoreKey          *sdk.KVStoreKey
 	currencyRegistryStoreKey *sdk.KVStoreKey
 	auctionStoreKey          *sdk.KVStoreKey
 	cdc                      *codec.Codec // The wire codec for binary encoding/decoding.
@@ -51,6 +52,7 @@ func NewKeeper(
 	stakingKeeper staking.Keeper,
 	distrKeeper distribution.Keeper,
 	storeKey sdk.StoreKey,
+	deletedStoreKey *sdk.KVStoreKey,
 	currencyRegistryStoreKey *sdk.KVStoreKey,
 	auctionStoreKey *sdk.KVStoreKey,
 	cdc *codec.Codec,
@@ -66,6 +68,7 @@ func NewKeeper(
 		stakingKeeper:            stakingKeeper,
 		distrKeeper:              distrKeeper,
 		storeKey:                 storeKey,
+		deletedStoreKey:          deletedStoreKey,
 		currencyRegistryStoreKey: currencyRegistryStoreKey,
 		auctionStoreKey:          auctionStoreKey,
 		cdc:                      cdc,

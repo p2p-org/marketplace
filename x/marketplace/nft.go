@@ -3,10 +3,10 @@ package marketplace
 import (
 	"fmt"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/modules/incubator/nft"
 	"github.com/corestario/marketplace/common"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/modules/incubator/nft"
 )
 
 // NFTModuleMarketplace overrides the NFT module for custom handlers
@@ -74,6 +74,11 @@ func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nf
 func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) sdk.Result {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMintNFT)
 
+	deletedStore := ctx.KVStore(mpKeeper.deletedStoreKey)
+	if deletedStore.Has([]byte(msg.ID)) {
+		return sdk.NewError(sdk.CodespaceRoot, sdk.CodeInternal, "NFT #%s has been deleted", msg.ID).Result()
+	}
+
 	// Create an account for the recipient of the minted NFTs.
 	if acc := mpKeeper.accKeeper.GetAccount(ctx, msg.Recipient); acc == nil {
 		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Recipient))
@@ -111,6 +116,10 @@ func HandleMsgBurnNFTMarketplace(ctx sdk.Context, msg nft.MsgBurnNFT, nftKeeper 
 	if err := mpKeeper.BurnNFT(ctx, msg.ID); err != nil {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BurnNFT: %v", err)).Result()
 	}
+
+	deletedStore := ctx.KVStore(mpKeeper.deletedStoreKey)
+	deletedStore.Set([]byte(msg.ID), []byte{})
+
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBurnNFT)
 	return sdk.Result{}
 }

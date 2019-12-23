@@ -10,6 +10,7 @@ const (
 	StoreKey                   = types.StoreKey
 	RegisterCurrencyKey        = types.RegisterCurrency
 	AuctionKey                 = types.AuctionKey
+	DeletedNFTKey              = types.DeletedNFTKey
 	FungibleTokenCreationPrice = types.FungibleTokenCreationPrice
 	FungibleCommissionAddress  = types.FungibleCommissionAddress
 

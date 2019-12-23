@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/modules/incubator/nft"
 	"github.com/corestario/marketplace/common"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/modules/incubator/nft"
 	"github.com/google/uuid"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"

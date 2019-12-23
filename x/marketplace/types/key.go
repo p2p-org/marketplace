@@ -14,6 +14,8 @@ func (s NFTStatus) String() string {
 		return "on_market"
 	case NFTStatusOnAuction:
 		return "on_auction"
+	case NFTStatusDeleted:
+		return "deleted"
 	case NFTStatusUndefined:
 		return "undefined"
 	}
@@ -36,8 +38,10 @@ func (s *NFTStatus) UnmarshalJSON(b []byte) error {
 		e = NFTStatus(1)
 	case "\"on_auction\"":
 		e = NFTStatus(2)
-	case "\"undefined\"":
+	case "\"deleted\"":
 		e = NFTStatus(3)
+	case "\"undefined\"":
+		e = NFTStatus(4)
 	default:
 		e = NFTStatus(0)
 	}
@@ -50,6 +54,7 @@ const (
 	NFTStatusDefault NFTStatus = iota
 	NFTStatusOnMarket
 	NFTStatusOnAuction
+	NFTStatusDeleted
 	NFTStatusUndefined
 )
 
@@ -61,6 +66,7 @@ const (
 	StoreKey         = ModuleName
 	RegisterCurrency = "register_currency"
 	AuctionKey       = "auction"
+	DeletedNFTKey    = "deleted_nft"
 
 	FungibleTokenCreationPrice = 10 // TODO: price or commission
 	FungibleCommissionAddress  = "" // TODO: create account for commissions
