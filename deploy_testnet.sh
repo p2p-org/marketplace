@@ -4,7 +4,7 @@ set -ex
 export_vars() {
   export TERRAFORM_BACKEND=""
   export TESTNET_NODES=""
-  expoty TERRAFORM_DO_TOKEN=""
+  export TERRAFORM_DO_TOKEN=""
   export NETWORK_NAME=""
   export TESTNET_CLIENTS_AMOUNT=""
   export TESTNET_CLIENT_PASSWORD=""
@@ -21,7 +21,7 @@ make_testnet () {
   if [ ! -z "$TESTNET_NODES" ]; then
     echo $TESTNET_NODES > config_nodes.auto.tfvars;
   fi
-  docker run -it ./hashicorp/terraform:latest -w /infra/terraform terraform init -backend-config="key=$NETWOR_NAME/terraform.tfstate"
+  docker run -it -v .infra:/infra ./hashicorp/terraform:latest -w /infra/terraform terraform init -backend-config="key=$NETWOR_NAME/terraform.tfstate"
   ssh-keygen -b 4096 -t rsa -f -q -N "" -f ../id_rsa && chmod 600 ~/.ssh/id_rsa
   docker run -rm
     -v .infra:/infra ./hashicorp/terraform:latest
