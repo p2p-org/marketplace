@@ -10,12 +10,15 @@ export_vars() {
   export TESTNET_CLIENT_PASSWORD=""
   export MARKETPLACE_MAX_COMMISION=""
   export DOCKERHUB_URL=""
-  export DOCKER_TESTNET_LOGIN=""
-  export DOCKER_TESTNET_PASSWORD=""
+  export DOCKER_TESTNET_PULL_TOKEN_LOGIN=""
+  export DOCKER_TESTNET_PULL_TOKEN_PASSWORD=""
+  export DOCKER_DWH_PULL_TOKEN_LOGIN=""
+  export DOCKER_DWH_PULL_TOKEN_PASSWORD=""
   export IMAGE_NAME=""
 }
 
 make_testnet () {
+  docker build -t runner -f .infra/ansible/ansible-runner.dockerfile .
   cd .infra/terraform
   echo $TERRAFORM_BACKEND_B64 > backend.tf
   if [ ! -z "$TESTNET_NODES" ]; then
@@ -23,7 +26,7 @@ make_testnet () {
   fi
   docker run -it ./hashicorp/terraform:latest -w /infra/terraform terraform init -backend-config="key=$NETWOR_NAME/terraform.tfstate"
   ssh-keygen -b 4096 -t rsa -f -q -N "" -f ../id_rsa && chmod 600 ~/.ssh/id_rsa
-  docker run -rm
+  docker run --rm -ti
     -v .infra:/infra ./hashicorp/terraform:latest
     -w /infra/terraform terraform apply -auto-approve -input=false
     -var provisioner_ssh_key_public="$(ssh-keygen -f /infra/.ssh/id_rsa -y)"
