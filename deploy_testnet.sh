@@ -24,7 +24,7 @@ make_testnet () {
   if [ ! -z "$TESTNET_NODES" ]; then
     echo $TESTNET_NODES > config_nodes.auto.tfvars;
   fi
-  docker run -it ./hashicorp/terraform:latest -w /infra/terraform terraform init -backend-config="key=$NETWOR_NAME/terraform.tfstate"
+  docker run -it -v .infra:/infra ./hashicorp/terraform:latest -w /infra/terraform terraform init -backend-config="key=$NETWOR_NAME/terraform.tfstate"
   ssh-keygen -b 4096 -t rsa -f -q -N "" -f ../id_rsa && chmod 600 ~/.ssh/id_rsa
   docker run --rm -ti
     -v .infra:/infra ./hashicorp/terraform:latest
