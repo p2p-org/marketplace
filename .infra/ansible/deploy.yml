@@ -1,0 +1,12 @@
+- hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common
+    - docker
+    - prometheus
+    - testnet
+    - dwh
+  vars_files:
+    - "vars/users.yml"
+    - "../hosts.yml"
