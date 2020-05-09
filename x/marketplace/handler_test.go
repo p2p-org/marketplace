@@ -3,9 +3,9 @@ package marketplace_test
 import (
 	"testing"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/corestario/marketplace/x/marketplace"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
@@ -117,7 +117,7 @@ func TestRollbackCommission(t *testing.T) {
 		for _, addr := range balanceAddrs {
 			addr := addr
 			require.NotEqual(t, coins.AmountOf(denom).Int64(),
-				mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, addr).AmountOf(denom).Int64())
+				mpKeeperTest.bankKeeper.GetAllBalances(mpKeeperTest.ctx, addr).AmountOf(denom).Int64())
 		}
 		// rollback
 		marketplace.RollbackCommissions(mpKeeperTest.ctx, mpKeeperTest.marketKeeper, logger, initialBalances)
@@ -125,7 +125,7 @@ func TestRollbackCommission(t *testing.T) {
 		for _, addr := range mpKeeperTest.addrs {
 			addr := addr
 			require.Equal(t, coins.AmountOf(denom).Int64(),
-				mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, addr).AmountOf(denom).Int64())
+				mpKeeperTest.bankKeeper.GetAllBalances(mpKeeperTest.ctx, addr).AmountOf(denom).Int64())
 		}
 	}
 }

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,7 +29,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	marketplaceTxCmd.AddCommand(client.PostCommands(
+	marketplaceTxCmd.AddCommand(
 		GetCmdPutNFTOnMarket(cdc),
 		GetCmdRemoveNFTFromMarket(cdc),
 		GetCmdBuyNFT(cdc),
@@ -51,7 +51,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdBatchBuyOnMarket(cdc),
 		GetCmdRemoveOffer(cdc),
 		GetTransferNFTTxCmd(cdc),
-	)...)
+	)
 
 	return marketplaceTxCmd
 }

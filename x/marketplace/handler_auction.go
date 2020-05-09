@@ -10,26 +10,25 @@ import (
 	"github.com/tendermint/tendermint/types/time"
 )
 
-func handleMsgPutNFTOnAuction(ctx sdk.Context, k *Keeper, msg types.MsgPutNFTOnAuction) sdk.Result {
+func handleMsgPutNFTOnAuction(ctx sdk.Context, k *Keeper, msg types.MsgPutNFTOnAuction) (*sdk.Result, error) {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgPutNFTOnAuction)
-	failMsg := "failed to PutNFTOnAuction"
 
 	if !k.IsDenomExist(ctx, msg.OpeningPrice) {
-		return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist"))
+		return nil, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist")
 	}
 
 	if !msg.BuyoutPrice.IsZero() {
 		if !k.IsDenomExist(ctx, msg.BuyoutPrice) {
-			return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist"))
+			return nil, fmt.Errorf("failed to PutNFTOnAuction: %v", "denom does not exist")
 		}
 		if msg.OpeningPrice.IsAnyGTE(msg.BuyoutPrice) {
-			return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", "buyout price is too low"))
+			return nil, fmt.Errorf("failed to PutNFTOnAuction: %v", "buyout price is too low")
 		}
 	}
 
 	if err := k.PutNFTOnAuction(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.OpeningPrice,
 		msg.BuyoutPrice, msg.TimeToSell); err != nil {
-		return wrapError(failMsg, fmt.Errorf("failed to PutNFTOnAuction: %v", err))
+		return nil, fmt.Errorf("failed to PutNFTOnAuction: %v", err)
 	}
 
 	ctx.EventManager().EmitEvents(sdk.Events{
@@ -49,39 +48,37 @@ func handleMsgPutNFTOnAuction(ctx sdk.Context, k *Keeper, msg types.MsgPutNFTOnA
 		),
 	})
 	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgPutNFTOnAuction)
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgRemoveNFTFromAuction(ctx sdk.Context, k *Keeper, msg MsgRemoveNFTFromAuction) sdk.Result {
+func handleMsgRemoveNFTFromAuction(ctx sdk.Context, k *Keeper, msg MsgRemoveNFTFromAuction) (*sdk.Result, error) {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgRemoveNFTFromAuction)
-	failMsg := "failed to RemoveNFTFromAuction"
 
 	lot, err := k.GetAuctionLot(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	nft, err := k.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	if !nft.Owner.Equals(msg.Owner) {
-		return wrapError(failMsg,
-			fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner))
+		return nil, fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner)
 	}
 
 	// return bid to last bidder if exists
 	if lot.LastBid != nil {
 		_, err := k.coinKeeper.AddCoins(ctx, lot.LastBid.Bidder, lot.LastBid.Bid)
 		if err != nil {
-			return wrapError(failMsg, err)
+			return nil, err
 		}
 	}
 
 	// return nft to owner, delete lot
 	if err := k.RemoveNFTFromAuction(ctx, msg.TokenID, msg.Owner); err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgRemoveNFTFromAuction)
@@ -98,27 +95,25 @@ func handleMsgRemoveNFTFromAuction(ctx sdk.Context, k *Keeper, msg MsgRemoveNFTF
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sdk.Result {
+func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) (*sdk.Result, error) {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgFinishAuction)
-	failMsg := "failed to FinishAuction"
 	lot, err := k.GetAuctionLot(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	nft, err := k.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	// auction time has not expired yet
 	if lot.ExpirationTime.After(time.Now().UTC()) {
 		if !nft.Owner.Equals(msg.Owner) {
-			return wrapError(failMsg,
-				fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner))
+			return nil, fmt.Errorf("auction lot owner: %v and finisher: %v do not match", msg.Owner, nft.Owner)
 		}
 	}
 
@@ -129,11 +124,11 @@ func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sd
 		owner = lot.LastBid.Bidder.String()
 		if err := k.BuyLotOnAuction(ctx, lot.LastBid.Bidder, lot.LastBid.BuyerBeneficiary,
 			lot.LastBid.Bid, lot, lot.LastBid.BeneficiaryCommission); err != nil {
-			return wrapError(failMsg, err)
+			return nil, err
 		}
 	} else {
 		if err := k.RemoveNFTFromAuction(ctx, msg.TokenID, nft.Owner); err != nil {
-			return wrapError(failMsg, err)
+			return nil, err
 		}
 	}
 
@@ -151,21 +146,20 @@ func handleMsgFinishAuction(ctx sdk.Context, k *Keeper, msg MsgFinishAuction) sd
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAuction) sdk.Result {
+func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAuction) (*sdk.Result, error) {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMakeBidOnAuction)
 
 	logger := ctx.Logger()
-	failMsg := "failed to MakeBidOnAuction"
 	lot, err := k.GetAuctionLot(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	if lot.ExpirationTime.Before(time.Now().UTC()) {
-		return wrapError(failMsg, fmt.Errorf("auction is already finished"))
+		return nil, fmt.Errorf("auction is already finished")
 	}
 
 	beneficiariesCommission := types.DefaultBeneficiariesCommission
@@ -174,20 +168,20 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 		beneficiariesCommission = parsed
 	}
 	if beneficiariesCommission > k.config.MaximumBeneficiaryCommission {
-		return wrapError(failMsg, fmt.Errorf("failed to BuyNFT: beneficiary commission is too high"))
+		return nil, fmt.Errorf("failed to BuyNFT: beneficiary commission is too high")
 	}
 	beneficiariesCommissionString := fmt.Sprintf("%v", beneficiariesCommission)
 
 	// bid is less than lastBid
 	if lot.LastBid != nil {
 		if msg.Bid.IsAllLTE(lot.LastBid.Bid) {
-			return wrapError(failMsg, fmt.Errorf("bid: %+v is lower than last bid: %+v", msg.Bid, lot.LastBid.Bid))
+			return nil, fmt.Errorf("bid: %+v is lower than last bid: %+v", msg.Bid, lot.LastBid.Bid)
 		}
 	}
 
 	// bid is less than opening price
 	if lot.OpeningPrice.IsAnyGT(msg.Bid) {
-		return wrapError(failMsg, fmt.Errorf("bid: %+v is lower than opening price: %+v", msg.Bid, lot.OpeningPrice))
+		return nil, fmt.Errorf("bid: %+v is lower than opening price: %+v", msg.Bid, lot.OpeningPrice)
 	}
 
 	// no buyout, change lastBid
@@ -199,7 +193,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 		_, err = k.coinKeeper.AddCoins(ctx, lot.LastBid.Bidder, lot.LastBid.Bid)
 		if err != nil {
 			RollbackCommissions(ctx, k, logger, balances)
-			return wrapError(failMsg, err)
+			return nil, err
 		}
 	}
 
@@ -207,7 +201,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 	_, err = k.coinKeeper.SubtractCoins(ctx, msg.Bidder, msg.Bid)
 	if err != nil {
 		RollbackCommissions(ctx, k, logger, balances)
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	auctionBid := types.NewAuctionBid(msg.Bidder, msg.BuyerBeneficiary, msg.Bid, beneficiariesCommissionString)
@@ -215,7 +209,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 
 	if err := k.UpdateAuctionLot(ctx, lot); err != nil {
 		RollbackCommissions(ctx, k, logger, balances)
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	attrs := []sdk.Attribute{
@@ -231,7 +225,7 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 		if msg.Bid.IsAllGTE(lot.BuyoutPrice) {
 			err = k.BuyLotOnAuction(ctx, msg.Bidder, msg.BuyerBeneficiary, lot.BuyoutPrice, lot, msg.BeneficiaryCommission)
 			if err != nil {
-				return wrapError(failMsg, err)
+				return nil, err
 			}
 			attrs = append(attrs, sdk.NewAttribute(types.AttributeKeyIsBuyout, "true"))
 		}
@@ -250,29 +244,28 @@ func handleMsgMakeBidOnAuction(ctx sdk.Context, k *Keeper, msg MsgMakeBidOnAucti
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Bidder.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBuyoutOnAuction(ctx sdk.Context, k *Keeper, msg MsgBuyoutOnAuction) sdk.Result {
+func handleMsgBuyoutOnAuction(ctx sdk.Context, k *Keeper, msg MsgBuyoutOnAuction) (*sdk.Result, error) {
 	k.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyoutFromAuction)
 
-	failMsg := "failed to BuyoutFromAuction"
 	lot, err := k.GetAuctionLot(ctx, msg.TokenID)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	if lot.ExpirationTime.Before(time.Now().UTC()) {
-		return wrapError(failMsg, fmt.Errorf("auction is already finished"))
+		return nil, fmt.Errorf("auction is already finished")
 	}
 
 	if lot.BuyoutPrice.IsZero() {
-		return wrapError(failMsg, fmt.Errorf("lot has no buyoutprice"))
+		return nil, fmt.Errorf("lot has no buyoutprice")
 	}
 
 	err = k.BuyLotOnAuction(ctx, msg.Buyer, msg.BuyerBeneficiary, lot.BuyoutPrice, lot, msg.BeneficiaryCommission)
 	if err != nil {
-		return wrapError(failMsg, err)
+		return nil, err
 	}
 
 	k.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBuyoutFromAuction)
@@ -291,13 +284,5 @@ func handleMsgBuyoutOnAuction(ctx sdk.Context, k *Keeper, msg MsgBuyoutOnAuction
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
-}
-
-func wrapError(failMsg string, err error) sdk.Result {
-	return sdk.Result{
-		Code:      sdk.CodeUnknownRequest,
-		Codespace: "marketplace",
-		Data:      []byte(fmt.Sprintf("%s: %v", failMsg, err)),
-	}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }

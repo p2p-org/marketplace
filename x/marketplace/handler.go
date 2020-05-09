@@ -16,7 +16,7 @@ import (
 
 // NewHandler returns a handler for "marketplace" type messages.
 func NewHandler(keeper *Keeper) sdk.Handler {
-	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
+	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		switch msg := msg.(type) {
 		case MsgPutNFTOnMarket:
 			return handleMsgPutNFTOnMarket(ctx, keeper, msg)
@@ -60,20 +60,20 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return HandleMsgTransferNFTByIBC(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
-			return sdk.ErrUnknownRequest(errMsg).Result()
+			return nil, fmt.Errorf(errMsg)
 		}
 	}
 }
 
-func handleMsgPutNFTOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgPutNFTOnMarket) sdk.Result {
+func handleMsgPutNFTOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgPutNFTOnMarket) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgPutNFTOnMarket)
 
 	if !mpKeeper.IsDenomExist(ctx, msg.Price) {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to PutNFTOnMarket: denom does not exist")).Result()
+		return nil, fmt.Errorf("failed to PutNFTOnMarket: denom does not exist")
 	}
 
 	if err := mpKeeper.PutNFTOnMarket(ctx, msg.TokenID, msg.Owner, msg.Beneficiary, msg.Price); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to PutNFTOnMarket: %v", err)).Result()
+		return nil, fmt.Errorf("failed to PutNFTOnMarket: %v", err)
 	}
 
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgPutNFTOnMarket)
@@ -93,13 +93,13 @@ func handleMsgPutNFTOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgPutNFTOnM
 		),
 	})
 
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgRemoveNFTFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveNFTFromMarket) sdk.Result {
+func handleMsgRemoveNFTFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveNFTFromMarket) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgRemoveNFTFromMarket)
 	if err := mpKeeper.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Owner); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveNFTFromMarket: %v", err)).Result()
+		return nil, fmt.Errorf("failed to RemoveNFTFromMarket: %v", err)
 	}
 
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgRemoveNFTFromMarket)
@@ -116,18 +116,18 @@ func handleMsgRemoveNFTFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemo
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Result {
+func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBuyNFT)
 	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: %v", err)
 	}
 
 	if !token.IsOnMarket() {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: token is not for sale")).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: token is not for sale")
 	}
 
 	beneficiariesCommission := types.DefaultBeneficiariesCommission
@@ -136,7 +136,7 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 		beneficiariesCommission = parsed
 	}
 	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: beneficiary commission is too high")
 	}
 
 	priceAfterCommission, err := doNFTCommissions(
@@ -150,12 +150,12 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 		beneficiariesCommission,
 	)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: failed to pay commissions: %v", err)).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: failed to pay commissions: %v", err)
 	}
 
 	err = mpKeeper.coinKeeper.SendCoins(ctx, msg.Buyer, token.Owner, priceAfterCommission)
 	if err != nil {
-		return sdk.ErrInsufficientCoins("Buyer does not have enough coins").Result()
+		return nil, fmt.Errorf("Buyer does not have enough coins")
 	}
 
 	token.Owner = msg.Buyer
@@ -163,7 +163,7 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 	token.SetStatus(types.NFTStatusDefault)
 
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBuyNFT)
 	ctx.EventManager().EmitEvents(sdk.Events{
@@ -180,19 +180,19 @@ func handleMsgBuyNFT(ctx sdk.Context, mpKeeper *Keeper, msg MsgBuyNFT) sdk.Resul
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk.Result {
+func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMakeOffer)
 
-	if !mpKeeper.coinKeeper.HasCoins(ctx, msg.Buyer, msg.Price) {
-		return sdk.ErrUnknownRequest("buyer does not have the offered funds").Result()
+	if !mpKeeper.coinKeeper.HasBalance(ctx, msg.Buyer, msg.Price[0]) {
+		return nil, fmt.Errorf("buyer does not have the offered funds")
 	}
 
 	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to MakeOffer: %v", err)
 	}
 
 	token.AddOffer(&types.Offer{
@@ -204,11 +204,11 @@ func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk
 	})
 
 	if _, err := mpKeeper.coinKeeper.SubtractCoins(ctx, msg.Buyer, msg.Price); err != nil {
-		return wrapError("failed to MakeOffer", err)
+		return nil, err
 	}
 
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to MakeOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to MakeOffer: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMakeOffer)
 	ctx.EventManager().EmitEvents(sdk.Events{
@@ -227,19 +227,19 @@ func handleMsgMakeOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgMakeOffer) sdk
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer) sdk.Result {
+func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgAcceptOffer)
 	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: %v", err)
 	}
 
 	offer, ok := token.GetOffer(msg.OfferID)
 	if !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)
 	}
 
 	beneficiariesCommission := types.DefaultBeneficiariesCommission
@@ -248,43 +248,43 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 		beneficiariesCommission = parsed
 	}
 	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: beneficiary commission is too high")).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: beneficiary commission is too high")
 	}
 
 	if token.IsOnMarket() {
 		err := mpKeeper.RemoveNFTFromMarket(ctx, msg.TokenID, msg.Seller)
 		if err != nil {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not remove token from market")).Result()
+			return nil, fmt.Errorf("failed to AcceptOffer: could not remove token from market")
 		}
 	}
 
 	if token.IsOnAuction() {
 		lot, err := mpKeeper.GetAuctionLot(ctx, msg.TokenID)
 		if err != nil {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not get auction lot")).Result()
+			return nil, fmt.Errorf("failed to AcceptOffer: could not get auction lot")
 		}
 
 		if lot.ExpirationTime.Before(time.Now().UTC()) {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("auction is already finished")).Result()
+			return nil, fmt.Errorf("auction is already finished")
 		}
 
 		// return bid to last bidder if exists
 		if lot.LastBid != nil {
 			_, err := mpKeeper.coinKeeper.AddCoins(ctx, lot.LastBid.Bidder, lot.LastBid.Bid)
 			if err != nil {
-				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not get return coins to bidder")).Result()
+				return nil, fmt.Errorf("failed to AcceptOffer: could not get return coins to bidder")
 			}
 		}
 
 		err = mpKeeper.RemoveNFTFromAuction(ctx, msg.TokenID, msg.Seller)
 		if err != nil {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: could not remove token from market")).Result()
+			return nil, fmt.Errorf("failed to AcceptOffer: could not remove token from market")
 		}
 	}
 
 	// Return frozen funds to the buyer so that doNFTCommissions works correctly
 	if _, err = mpKeeper.coinKeeper.AddCoins(ctx, offer.Buyer, offer.Price); err != nil {
-		return wrapError("failed to AcceptOffer", err)
+		return nil, err
 	}
 
 	priceAfterCommission, err := doNFTCommissions(
@@ -298,15 +298,15 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 		beneficiariesCommission,
 	)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: failed to pay commissions: %v", err)).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: failed to pay commissions: %v", err)
 	}
 
 	if err = mpKeeper.coinKeeper.SendCoins(ctx, offer.Buyer, token.Owner, priceAfterCommission); err != nil {
-		return sdk.ErrInsufficientCoins("failed to AcceptOffer: buyer does not have enough coins").Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: buyer does not have enough coins")
 	}
 
 	if ok := token.RemoveOffer(offer.ID, offer.Buyer); !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: no ofer with ID %s", msg.OfferID)
 	}
 
 	token.Owner = offer.Buyer
@@ -314,7 +314,7 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 	token.SetStatus(types.NFTStatusDefault)
 
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to AcceptOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to AcceptOffer: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgAcceptOffer)
 	ctx.EventManager().EmitEvents(sdk.Events{
@@ -329,32 +329,32 @@ func handleMsgAcceptOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgAcceptOffer)
 			sdk.NewAttribute(sdk.AttributeKeySender, offer.Buyer.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgRemoveOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveOffer) sdk.Result {
+func handleMsgRemoveOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveOffer) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgRemoveOffer)
 	token, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to RemoveOffer: %v", err)
 	}
 
 	offer, ok := token.GetOffer(msg.OfferID)
 	if !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)).Result()
+		return nil, fmt.Errorf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)
 	}
 
 	ok = token.RemoveOffer(msg.OfferID, msg.Buyer)
 	if !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)).Result()
+		return nil, fmt.Errorf("failed to RemoveOffer: no ofer with ID %s", msg.OfferID)
 	}
 
 	if _, err := mpKeeper.coinKeeper.AddCoins(ctx, msg.Buyer, offer.Price); err != nil {
-		return wrapError("failed to RemoveOffer", err)
+		return nil, err
 	}
 
 	if err := mpKeeper.UpdateNFT(ctx, token); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to RemoveOffer: %v", err)).Result()
+		return nil, fmt.Errorf("failed to RemoveOffer: %v", err)
 	}
 
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgRemoveOffer)
@@ -370,17 +370,17 @@ func handleMsgRemoveOffer(ctx sdk.Context, mpKeeper *Keeper, msg MsgRemoveOffer)
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Buyer.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNFTParams) sdk.Result {
+func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNFTParams) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgUpdateNFTParams)
 	nft, err := mpKeeper.GetNFT(ctx, msg.TokenID)
 	if err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to get nft in UpdateNFTParams: %v", err)).Result()
+		return nil, fmt.Errorf("failed to get nft in UpdateNFTParams: %v", err)
 	}
 	if !nft.Owner.Equals(msg.Owner) {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("user is not an owner: %v", msg.Owner.String())).Result()
+		return nil, fmt.Errorf("user is not an owner: %v", msg.Owner.String())
 	}
 
 	for _, v := range msg.Params {
@@ -389,10 +389,10 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNF
 		case types.FlagParamPrice:
 			price, err := sdk.ParseCoins(v.Value)
 			if err != nil {
-				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: %v", err)).Result()
+				return nil, fmt.Errorf("failed to UpdateNFTParams.Price: %v", err)
 			}
 			if !mpKeeper.IsDenomExist(ctx, price) {
-				return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams.Price: denom is not registered")).Result()
+				return nil, fmt.Errorf("failed to UpdateNFTParams.Price: denom is not registered")
 
 			}
 			nft.Price = price
@@ -400,7 +400,7 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNF
 	}
 
 	if err := mpKeeper.UpdateNFT(ctx, nft); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to UpdateNFTParams: %v", err)).Result()
+		return nil, fmt.Errorf("failed to UpdateNFTParams: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgUpdateNFTParams)
 	ctx.EventManager().EmitEvents(sdk.Events{
@@ -416,13 +416,13 @@ func handleMsgUpdateNFTParams(ctx sdk.Context, mpKeeper *Keeper, msg MsgUpdateNF
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper *Keeper, msg MsgCreateFungibleToken) sdk.Result {
+func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper *Keeper, msg MsgCreateFungibleToken) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgCreateFungibleToken)
 	if err := mpKeeper.CreateFungibleToken(ctx, msg.Creator, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to create currency: %v", err)).Result()
+		return nil, fmt.Errorf("failed to create currency: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgCreateFungibleToken)
 
@@ -439,13 +439,13 @@ func handleMsgCreateFungibleTokensCurrency(ctx sdk.Context, mpKeeper *Keeper, ms
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Creator.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper *Keeper, msg MsgTransferFungibleTokens) sdk.Result {
+func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper *Keeper, msg MsgTransferFungibleTokens) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferFungibleTokens)
 	if err := mpKeeper.TransferFungibleTokens(ctx, msg.Owner, msg.Recipient, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to transfer coins: %v", err)).Result()
+		return nil, fmt.Errorf("failed to transfer coins: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferFungibleTokens)
 
@@ -463,13 +463,13 @@ func handleMsgTransferFungibleTokens(ctx sdk.Context, mpKeeper *Keeper, msg MsgT
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBurnFungibleToken(ctx sdk.Context, mpKeeper *Keeper, msg MsgBurnFungibleToken) sdk.Result {
+func handleMsgBurnFungibleToken(ctx sdk.Context, mpKeeper *Keeper, msg MsgBurnFungibleToken) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
 	if err := mpKeeper.BurnFungibleTokens(ctx, msg.Owner, msg.Denom, msg.Amount); err != nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to burn coins: %v", err)).Result()
+		return nil, fmt.Errorf("failed to burn coins: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBurnFT)
 
@@ -486,7 +486,7 @@ func handleMsgBurnFungibleToken(ctx sdk.Context, mpKeeper *Keeper, msg MsgBurnFu
 			sdk.NewAttribute(sdk.AttributeKeySender, msg.Owner.String()),
 		),
 	})
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
 func doNFTCommissions(
@@ -502,7 +502,7 @@ func doNFTCommissions(
 	logger := ctx.Logger()
 
 	// Check that buyer has enough funds (for both the commission and the asset itself).
-	if !k.coinKeeper.HasCoins(ctx, buyer, price) {
+	if !k.coinKeeper.HasBalance(ctx, buyer, price[0]) {
 		return nil, fmt.Errorf("user %s does not have enough funds", buyer.String())
 	}
 	logger.Info("user has enough funds, o.nftKeeper.")
@@ -522,16 +522,16 @@ func doNFTCommissions(
 	singleValCommission := GetCommission(price, types.DefaultValidatorsCommission/lenVals)
 	totalValsCommission := sdk.NewCoins()
 	for i := 0; i < int(lenVals); i++ {
-		totalValsCommission = totalValsCommission.Add(singleValCommission)
+		totalValsCommission = totalValsCommission.Add(singleValCommission...)
 	}
 
 	totalCommission := sdk.NewCoins()
 	beneficiaryCommission := GetCommission(price, beneficiariesCommission/2)
 	logger.Info("calculated beneficiary commission", "beneficiary_commission", beneficiaryCommission.String())
 
-	totalCommission = totalCommission.Add(beneficiaryCommission)
-	totalCommission = totalCommission.Add(beneficiaryCommission)
-	totalCommission = totalCommission.Add(totalValsCommission)
+	totalCommission = totalCommission.Add(beneficiaryCommission...)
+	totalCommission = totalCommission.Add(beneficiaryCommission...)
+	totalCommission = totalCommission.Add(totalValsCommission...)
 
 	priceAfterCommission = price.Sub(totalCommission)
 	logger.Info("calculated total commission", "total_commission", totalCommission.String(),
@@ -561,7 +561,7 @@ func doNFTCommissions(
 		"num_validators", len(vals))
 	for _, val := range vals {
 		consVal := k.stakingKeeper.ValidatorByConsAddr(ctx, sdk.ConsAddress(val.Address))
-		k.distrKeeper.AllocateTokensToValidator(ctx, consVal, sdk.NewDecCoins(singleValCommission))
+		k.distrKeeper.AllocateTokensToValidator(ctx, consVal, sdk.NewDecCoinsFromCoins(singleValCommission...))
 	}
 
 	return priceAfterCommission, nil
@@ -577,7 +577,7 @@ func GetBalances(ctx sdk.Context, mpKeeper *Keeper, addrs ...sdk.AccAddress) []*
 	for _, addr := range addrs {
 		out = append(out, &balance{
 			addr:   addr,
-			amount: mpKeeper.coinKeeper.GetCoins(ctx, addr),
+			amount: mpKeeper.coinKeeper.GetAllBalances(ctx, addr),
 		})
 	}
 
@@ -586,7 +586,7 @@ func GetBalances(ctx sdk.Context, mpKeeper *Keeper, addrs ...sdk.AccAddress) []*
 
 func RollbackCommissions(ctx sdk.Context, mpKeeper *Keeper, logger log.Logger, initialBalances []*balance) {
 	for _, balance := range initialBalances {
-		if err := mpKeeper.coinKeeper.SetCoins(ctx, balance.addr, balance.amount); err != nil {
+		if err := mpKeeper.coinKeeper.SetBalances(ctx, balance.addr, balance.amount); err != nil {
 			logger.Error("failed to rollback commissions", "addr", balance.addr.String(), "error", err)
 		}
 	}
@@ -629,27 +629,27 @@ func GetCommission(price sdk.Coins, rat64 float64) sdk.Coins {
 		return price
 	}
 	num, denom := calculateNumAndDenom(rat64)
-	priceDec := sdk.NewDecCoins(price)
+	priceDec := sdk.NewDecCoinsFromCoins(price...)
 	totalCommission, _ := priceDec.MulDec(num).QuoDec(denom).TruncateDecimal()
 	return totalCommission
 }
 
-func handleMsgBatchTransfer(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchTransfer) sdk.Result {
+func handleMsgBatchTransfer(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchTransfer) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgBatchTransfer)
 
 	for _, tokenID := range msg.TokenIDs {
 		token, err := mpKeeper.GetNFT(ctx, tokenID)
 		if err != nil {
-			sdk.ErrUnknownRequest(fmt.Sprintf("failed to find token %s: %v", tokenID, err)).Result()
+			return nil, fmt.Errorf("failed to find token %s: %v", tokenID, err)
 		}
-		res := HandleMsgTransferNFTMarketplace(ctx, nft.MsgTransferNFT{
+		_, err = HandleMsgTransferNFTMarketplace(ctx, nft.MsgTransferNFT{
 			Sender:    msg.Sender,
 			Recipient: msg.Recipient,
 			Denom:     token.Denom,
 			ID:        tokenID,
 		}, mpKeeper.nftKeeper, mpKeeper)
-		if !res.IsOK() {
-			ctx.Logger().Info("batch transfer error, tokenID:", tokenID, "result:", string(res.Data))
+		if err != nil {
+			ctx.Logger().Info("batch transfer error, tokenID:", tokenID)
 			continue
 		}
 	}
@@ -663,10 +663,10 @@ func handleMsgBatchTransfer(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchTrans
 		),
 	})
 
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBatchPutOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchPutOnMarket) sdk.Result {
+func handleMsgBatchPutOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchPutOnMarket) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchPutOnMarket)
 
 	for k, price := range msg.TokenPrices {
@@ -674,15 +674,15 @@ func handleMsgBatchPutOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchPu
 		tokenID := msg.TokenIDs[k]
 		price := price
 
-		res := handleMsgPutNFTOnMarket(ctx, mpKeeper, MsgPutNFTOnMarket{
+		_, err := handleMsgPutNFTOnMarket(ctx, mpKeeper, MsgPutNFTOnMarket{
 			Owner:       msg.Owner,
 			Beneficiary: msg.Beneficiary,
 			TokenID:     tokenID,
 			Price:       price,
 		})
-		if !res.IsOK() {
-			ctx.Logger().Info("batch put on market error, tokenID:", tokenID, "result:", string(res.Data))
-			return res
+		if err != nil {
+			ctx.Logger().Info("batch put on market error, tokenID:", tokenID)
+			return nil, err
 		}
 	}
 
@@ -695,19 +695,19 @@ func handleMsgBatchPutOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchPu
 		),
 	})
 
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBatchRemoveFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchRemoveFromMarket) sdk.Result {
+func handleMsgBatchRemoveFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchRemoveFromMarket) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchRemoveFromMarket)
 
 	for _, tokenID := range msg.TokenIDs {
-		res := handleMsgRemoveNFTFromMarket(ctx, mpKeeper, MsgRemoveNFTFromMarket{
+		_, err := handleMsgRemoveNFTFromMarket(ctx, mpKeeper, MsgRemoveNFTFromMarket{
 			Owner:   msg.Owner,
 			TokenID: tokenID,
 		})
-		if !res.IsOK() {
-			ctx.Logger().Info("batch remove from market error, tokenID:", tokenID, "result:", string(res.Data))
+		if err != nil {
+			ctx.Logger().Info("batch remove from market error, tokenID:", tokenID, "result:")
 			continue
 		}
 	}
@@ -721,10 +721,10 @@ func handleMsgBatchRemoveFromMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBa
 		),
 	})
 
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }
 
-func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBuyOnMarket) sdk.Result {
+func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBuyOnMarket) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgMsgBatchBuyOnMarket)
 
 	beneficiariesCommission := types.DefaultBeneficiariesCommission
@@ -733,7 +733,7 @@ func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBu
 		beneficiariesCommission = parsed
 	}
 	if beneficiariesCommission > mpKeeper.config.MaximumBeneficiaryCommission {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: beneficiary commission is too high")).Result()
+		return nil, fmt.Errorf("failed to BuyNFT: beneficiary commission is too high")
 	}
 
 	priceSum := sdk.NewCoins()
@@ -742,29 +742,29 @@ func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBu
 		tokenID := tokenID
 		token, err := mpKeeper.GetNFT(ctx, tokenID)
 		if err != nil {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to BuyNFT: %v", err)).Result()
+			return nil, fmt.Errorf("failed to BuyNFT: %v", err)
 		}
 		if !token.IsOnMarket() {
-			return sdk.ErrUnknownRequest(fmt.Sprintf("failed to buy: token %v is not on market", token.ID)).Result()
+			return nil, fmt.Errorf("failed to buy: token %v is not on market", token.ID)
 		}
-		priceSum = priceSum.Add(token.Price)
+		priceSum = priceSum.Add(token.Price...)
 	}
 
-	buyerCoins := mpKeeper.coinKeeper.GetCoins(ctx, msg.Buyer)
+	buyerCoins := mpKeeper.coinKeeper.GetAllBalances(ctx, msg.Buyer)
 	if !buyerCoins.IsAllGTE(priceSum) {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("failed to buy batch: not enough funds")).Result()
+		return nil, fmt.Errorf("failed to buy batch: not enough funds")
 	}
 
 	for _, tokenID := range msg.TokenIDs {
 		tokenID := tokenID
 
-		res := handleMsgBuyNFT(ctx, mpKeeper, MsgBuyNFT{
+		_, err := handleMsgBuyNFT(ctx, mpKeeper, MsgBuyNFT{
 			Buyer:       msg.Buyer,
 			Beneficiary: msg.Beneficiary,
 			TokenID:     tokenID,
 		})
-		if !res.IsOK() {
-			ctx.Logger().Info("batch buy error, tokenID:", tokenID, "result:", string(res.Data))
+		if err != nil {
+			ctx.Logger().Info("batch buy error, tokenID:", tokenID, "result:")
 			continue
 		}
 	}
@@ -778,5 +778,5 @@ func handleMsgBatchBuyOnMarket(ctx sdk.Context, mpKeeper *Keeper, msg MsgBatchBu
 		),
 	})
 
-	return sdk.Result{Events: ctx.EventManager().Events()}
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }

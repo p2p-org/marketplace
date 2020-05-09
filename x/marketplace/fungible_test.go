@@ -3,9 +3,9 @@ package marketplace_test
 import (
 	"testing"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/corestario/marketplace/x/marketplace"
 	"github.com/corestario/marketplace/x/marketplace/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,9 +23,6 @@ type createAndTransferFT struct {
 }
 
 func TestCreateAndTransferFT(t *testing.T) {
-	var (
-		result sdk.Result
-	)
 
 	// TODO: fix expectedCreatorBalanceAfterCreation
 	testData := []createAndTransferFT{
@@ -50,15 +47,15 @@ func TestCreateAndTransferFT(t *testing.T) {
 		handler := marketplace.NewHandler(mpKeeperTest.marketKeeper)
 
 		createFT := types.NewMsgCreateFungibleToken(mpKeeperTest.addrs[0], data.denomFT, data.emissionFTAmount)
-		result = handler(mpKeeperTest.ctx, *createFT)
-		require.True(t, result.IsOK())
+		_, err = handler(mpKeeperTest.ctx, *createFT)
+		require.NoError(t, err)
 		require.Equal(t, data.expectedCreatorBalanceAfterCreation,
-			mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx, mpKeeperTest.addrs[0]).AmountOf(data.denom).Int64())
+			mpKeeperTest.bankKeeper.GetAllBalances(mpKeeperTest.ctx, mpKeeperTest.addrs[0]).AmountOf(data.denom).Int64())
 
 		transferFT := types.NewMsgTransferFungibleTokens(mpKeeperTest.addrs[0], mpKeeperTest.addrs[1], data.denomFT, data.transferFTAmount)
-		result = handler(mpKeeperTest.ctx, *transferFT)
-		require.True(t, result.IsOK())
-		require.Equal(t, data.expectedRecipientFTBalanceAfterTransfer, mpKeeperTest.bankKeeper.GetCoins(mpKeeperTest.ctx,
+		_, err = handler(mpKeeperTest.ctx, *transferFT)
+		require.NoError(t, err)
+		require.Equal(t, data.expectedRecipientFTBalanceAfterTransfer, mpKeeperTest.bankKeeper.GetAllBalances(mpKeeperTest.ctx,
 			mpKeeperTest.addrs[1]).AmountOf(data.denomFT).Int64())
 	}
 }

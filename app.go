@@ -3,6 +3,16 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/std"
+	"github.com/cosmos/cosmos-sdk/x/auth/ante"
+	"github.com/cosmos/cosmos-sdk/x/capability"
+	"github.com/cosmos/cosmos-sdk/x/crisis"
+	"github.com/cosmos/cosmos-sdk/x/evidence"
+	"github.com/cosmos/cosmos-sdk/x/gov"
+	"github.com/cosmos/cosmos-sdk/x/ibc"
+	port "github.com/cosmos/cosmos-sdk/x/ibc/05-port"
+	"github.com/cosmos/cosmos-sdk/x/upgrade"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"os"
 
 	"github.com/corestario/marketplace/common"
@@ -16,17 +26,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	distr "github.com/cosmos/cosmos-sdk/x/distribution"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
-	"github.com/cosmos/cosmos-sdk/x/ibc"
-	ibctransfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
+	transfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
-	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -47,15 +54,31 @@ var (
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
 		params.AppModuleBasic{},
+		mint.AppModuleBasic{},
 		staking.AppModuleBasic{},
 		distr.AppModuleBasic{},
 		slashing.AppModuleBasic{},
-		supply.AppModuleBasic{},
 		nft.AppModuleBasic{},
 		ibc.AppModuleBasic{},
 
 		marketplace.AppModule{},
 	)
+
+	// module account permissions
+	maccPerms = map[string][]string{
+		auth.FeeCollectorName:           nil,
+		distr.ModuleName:                nil,
+		mint.ModuleName:                 {auth.Minter},
+		staking.BondedPoolName:          {auth.Burner, auth.Staking},
+		staking.NotBondedPoolName:       {auth.Burner, auth.Staking},
+		gov.ModuleName:                  {auth.Burner},
+		transfer.GetModuleAccountName(): {auth.Minter, auth.Burner},
+	}
+
+	// module accounts that are allowed to receive tokens
+	allowedReceivingModAcc = map[string]bool{
+		distr.ModuleName: true,
+	}
 )
 
 // MakeCodec generates the necessary codecs for Amino
@@ -71,37 +94,33 @@ type marketplaceApp struct {
 	*bam.BaseApp
 	cdc *codec.Codec
 
-	// Keys to access the substores
-	keyMain     *sdk.KVStoreKey
-	keyAccount  *sdk.KVStoreKey
-	keySupply   *sdk.KVStoreKey
-	keyStaking  *sdk.KVStoreKey
-	tkeyStaking *sdk.TransientStoreKey
-	keyDistr    *sdk.KVStoreKey
-	tkeyDistr   *sdk.TransientStoreKey
-	keyNFT      *sdk.KVStoreKey
-	keyParams   *sdk.KVStoreKey
-	tkeyParams  *sdk.TransientStoreKey
-	keySlashing *sdk.KVStoreKey
-	keyIBC      *sdk.KVStoreKey
+	// keys to access the substores
+	keys    map[string]*sdk.KVStoreKey
+	tkeys   map[string]*sdk.TransientStoreKey
+	memKeys map[string]*sdk.MemoryStoreKey
+
+	// subspaces
+	subspaces map[string]params.Subspace
 
 	// Keepers
-	accountKeeper  auth.AccountKeeper
-	bankKeeper     bank.Keeper
-	supplyKeeper   supply.Keeper
-	stakingKeeper  staking.Keeper
-	slashingKeeper slashing.Keeper
-	distrKeeper    distr.Keeper
-	paramsKeeper   params.Keeper
-	nftKeeper      *nft.Keeper
-	ibcKeeper      ibc.Keeper
+	accountKeeper    auth.AccountKeeper
+	bankKeeper       bank.Keeper
+	mintKeeper       mint.Keeper
+	stakingKeeper    staking.Keeper
+	slashingKeeper   slashing.Keeper
+	distrKeeper      distr.Keeper
+	paramsKeeper     params.Keeper
+	nftKeeper        *nft.Keeper
+	ibcKeeper        *ibc.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
+	evidenceKeeper   evidence.Keeper
+	transferKeeper   transfer.Keeper
+	capabilityKeeper *capability.Keeper
 
 	mpKeeper *marketplace.Keeper
 
-	keyMP               *sdk.KVStoreKey
-	keyRegisterCurrency *sdk.KVStoreKey
-	keyAuction          *sdk.KVStoreKey
-	keyDeletedNFT       *sdk.KVStoreKey
+	// make scoped keepers public for test purposes
+	scopedIBCKeeper      capability.ScopedKeeper
+	scopedTransferKeeper capability.ScopedKeeper
 
 	// Module Manager
 	mm *module.Manager
@@ -111,120 +130,108 @@ type marketplaceApp struct {
 func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam.BaseApp)) *marketplaceApp {
 
 	// First define the top level codec that will be shared by the different modules
-	cdc := MakeCodec()
+	cdc := std.MakeCodec(ModuleBasics)
+	appCodec := std.NewAppCodec(cdc)
 
 	// BaseApp handles interactions with Tendermint through the ABCI protocol
 	bApp := bam.NewBaseApp(appName, logger, db, auth.DefaultTxDecoder(cdc), baseAppOptions...)
 
+	keys := sdk.NewKVStoreKeys(
+		auth.StoreKey, bank.StoreKey, staking.StoreKey,
+		mint.StoreKey, distr.StoreKey, slashing.StoreKey,
+		gov.StoreKey, params.StoreKey, ibc.StoreKey, upgrade.StoreKey,
+		evidence.StoreKey, transfer.StoreKey, capability.StoreKey,
+		nft.StoreKey, marketplace.StoreKey, marketplace.RegisterCurrencyKey, marketplace.AuctionKey,
+		marketplace.DeletedNFTKey,
+	)
+
+	tkeys := sdk.NewTransientStoreKeys(params.TStoreKey)
+	memKeys := sdk.NewMemoryStoreKeys(capability.MemStoreKey)
+
 	// Here you initialize your application with the store keys it requires
 	var app = &marketplaceApp{
-		BaseApp: bApp,
-		cdc:     cdc,
-
-		keyMain:     sdk.NewKVStoreKey(bam.MainStoreKey),
-		keyAccount:  sdk.NewKVStoreKey(auth.StoreKey),
-		keySupply:   sdk.NewKVStoreKey(supply.StoreKey),
-		keyStaking:  sdk.NewKVStoreKey(staking.StoreKey),
-		tkeyStaking: sdk.NewTransientStoreKey(staking.TStoreKey),
-		keyDistr:    sdk.NewKVStoreKey(distr.StoreKey),
-		tkeyDistr:   sdk.NewTransientStoreKey("transient_" + distr.ModuleName),
-		keyNFT:      sdk.NewKVStoreKey(nft.StoreKey),
-		keyParams:   sdk.NewKVStoreKey(params.StoreKey),
-		tkeyParams:  sdk.NewTransientStoreKey(params.TStoreKey),
-		keySlashing: sdk.NewKVStoreKey(slashing.StoreKey),
-		keyIBC:      sdk.NewKVStoreKey(ibc.StoreKey),
-
-		keyMP:               sdk.NewKVStoreKey(marketplace.StoreKey),
-		keyRegisterCurrency: sdk.NewKVStoreKey(marketplace.RegisterCurrencyKey),
-		keyAuction:          sdk.NewKVStoreKey(marketplace.AuctionKey),
-		keyDeletedNFT:       sdk.NewKVStoreKey(marketplace.DeletedNFTKey),
+		BaseApp:   bApp,
+		cdc:       cdc,
+		keys:      keys,
+		tkeys:     tkeys,
+		memKeys:   memKeys,
+		subspaces: make(map[string]params.Subspace),
 	}
 
 	// The ParamsKeeper handles parameter storage for the application
-	app.paramsKeeper = params.NewKeeper(app.cdc, app.keyParams, app.tkeyParams, params.DefaultCodespace)
+	app.paramsKeeper = params.NewKeeper(appCodec, keys[params.StoreKey], tkeys[params.TStoreKey])
 	// Set specific supspaces
-	authSubspace := app.paramsKeeper.Subspace(auth.DefaultParamspace)
-	bankSubspace := app.paramsKeeper.Subspace(bank.DefaultParamspace)
-	stakingSubspace := app.paramsKeeper.Subspace(staking.DefaultParamspace)
-	distrSubspace := app.paramsKeeper.Subspace(distr.DefaultParamspace)
-	slashingSubspace := app.paramsKeeper.Subspace(slashing.DefaultParamspace)
+	app.subspaces[auth.ModuleName] = app.paramsKeeper.Subspace(auth.DefaultParamspace)
+	app.subspaces[bank.ModuleName] = app.paramsKeeper.Subspace(bank.DefaultParamspace)
+	app.subspaces[staking.ModuleName] = app.paramsKeeper.Subspace(staking.DefaultParamspace)
+	app.subspaces[mint.ModuleName] = app.paramsKeeper.Subspace(mint.DefaultParamspace)
+	app.subspaces[distr.ModuleName] = app.paramsKeeper.Subspace(distr.DefaultParamspace)
+	app.subspaces[slashing.ModuleName] = app.paramsKeeper.Subspace(slashing.DefaultParamspace)
+	app.subspaces[gov.ModuleName] = app.paramsKeeper.Subspace(gov.DefaultParamspace).WithKeyTable(gov.ParamKeyTable())
+	app.subspaces[crisis.ModuleName] = app.paramsKeeper.Subspace(crisis.DefaultParamspace)
 
-	// The AccountKeeper handles address -> account lookups
+	bApp.SetParamStore(app.paramsKeeper.Subspace(bam.Paramspace).WithKeyTable(std.ConsensusParamsKeyTable()))
+
+	app.capabilityKeeper = capability.NewKeeper(appCodec, keys[capability.StoreKey], memKeys[capability.MemStoreKey])
+	scopedIBCKeeper := app.capabilityKeeper.ScopeToModule(ibc.ModuleName)
+	scopedTransferKeeper := app.capabilityKeeper.ScopeToModule(transfer.ModuleName)
+
 	app.accountKeeper = auth.NewAccountKeeper(
-		app.cdc,
-		app.keyAccount,
-		authSubspace,
-		auth.ProtoBaseAccount,
+		appCodec, keys[auth.StoreKey], app.subspaces[auth.ModuleName], auth.ProtoBaseAccount, maccPerms,
 	)
-
-	// The BankKeeper allows you perform sdk.Coins interactions
 	app.bankKeeper = bank.NewBaseKeeper(
-		app.accountKeeper,
-		bankSubspace,
-		bank.DefaultCodespace,
-		nil, // TODO: maybe we should do something about those blacklisted addresses.
+		appCodec, keys[bank.StoreKey], app.accountKeeper, app.subspaces[bank.ModuleName], app.BlacklistedAccAddrs(),
 	)
-
-	maccPerms := map[string][]string{
-		auth.FeeCollectorName:              nil,
-		distr.ModuleName:                   nil,
-		nft.ModuleName:                     nil,
-		mint.ModuleName:                    {supply.Minter},
-		staking.BondedPoolName:             {supply.Burner, supply.Staking},
-		staking.NotBondedPoolName:          {supply.Burner, supply.Staking},
-		bank.ModuleName:                    {supply.Minter, supply.Burner, supply.Staking},
-		ibctransfer.GetModuleAccountName(): {supply.Minter, supply.Burner},
-	}
-	app.supplyKeeper = supply.NewKeeper(app.cdc, app.keySupply, app.accountKeeper,
-		app.bankKeeper, maccPerms)
+	stakingKeeper := staking.NewKeeper(
+		appCodec, keys[staking.StoreKey], app.accountKeeper, app.bankKeeper, app.subspaces[staking.ModuleName],
+	)
+	app.mintKeeper = mint.NewKeeper(
+		appCodec, keys[mint.StoreKey], app.subspaces[mint.ModuleName], &stakingKeeper,
+		app.accountKeeper, app.bankKeeper, auth.FeeCollectorName,
+	)
+	app.distrKeeper = distr.NewKeeper(
+		appCodec, keys[distr.StoreKey], app.subspaces[distr.ModuleName], app.accountKeeper, app.bankKeeper,
+		&stakingKeeper, auth.FeeCollectorName, app.ModuleAccountAddrs(),
+	)
+	app.slashingKeeper = slashing.NewKeeper(
+		appCodec, keys[slashing.StoreKey], &stakingKeeper, app.subspaces[slashing.ModuleName],
+	)
+	//app.crisisKeeper = crisis.NewKeeper(
+	//	app.subspaces[crisis.ModuleName], invCheckPeriod, app.bankKeeper, auth.FeeCollectorName,
+	//)
+	//app.upgradeKeeper = upgrade.NewKeeper(skipUpgradeHeights, keys[upgrade.StoreKey], appCodec, DefaultNodeHome)
 
 	// The staking keeper
-	stakingKeeper := staking.NewKeeper(
-		app.cdc,
-		app.keyStaking,
-		app.supplyKeeper,
-		stakingSubspace,
-		staking.DefaultCodespace,
+	app.stakingKeeper = *stakingKeeper.SetHooks(
+		staking.NewMultiStakingHooks(app.distrKeeper.Hooks(), app.slashingKeeper.Hooks()),
 	)
 
-	app.ibcKeeper = ibc.NewKeeper(app.cdc, app.keyIBC, ibc.DefaultCodespace, app.bankKeeper, app.supplyKeeper)
+	app.ibcKeeper = ibc.NewKeeper(
+		app.cdc, keys[ibc.StoreKey], app.stakingKeeper, scopedIBCKeeper,
+	)
+
+	// Create Transfer Keepers
+	app.transferKeeper = transfer.NewKeeper(
+		app.cdc, keys[transfer.StoreKey],
+		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
+		app.accountKeeper, app.bankKeeper,
+		scopedTransferKeeper,
+	)
+	transferModule := transfer.NewAppModule(app.transferKeeper)
+
+	// Create static IBC router, add transfer route, then set and seal it
+	ibcRouter := port.NewRouter()
+	ibcRouter.AddRoute(transfer.ModuleName, transferModule)
+	app.ibcKeeper.SetRouter(ibcRouter)
 
 	// The NFTKeeper is the Keeper from the module NFTs.
 	newKeeper := nft.NewKeeper(
 		app.cdc,
-		app.keyNFT,
+		app.keys[nft.StoreKey],
 	)
 	app.nftKeeper = &newKeeper
 
-	ibcModule := ibc.NewAppModule(app.ibcKeeper)
 	nftModule := nft.NewAppModule(newKeeper)
-
-	app.distrKeeper = distr.NewKeeper(
-		app.cdc,
-		app.keyDistr,
-		distrSubspace,
-		&stakingKeeper,
-		app.supplyKeeper,
-		distr.DefaultCodespace,
-		auth.FeeCollectorName,
-		nil, // TODO: maybe we should do something about those blacklisted addresses.
-	)
-
-	app.slashingKeeper = slashing.NewKeeper(
-		app.cdc,
-		app.keySlashing,
-		&stakingKeeper,
-		slashingSubspace,
-		slashing.DefaultCodespace,
-	)
-
-	// register the staking hooks
-	// NOTE: stakingKeeper above is passed by reference, so that it will contain these hooks
-	app.stakingKeeper = *stakingKeeper.SetHooks(
-		staking.NewMultiStakingHooks(
-			app.distrKeeper.Hooks(),
-			app.slashingKeeper.Hooks()),
-	)
 
 	srvCfg := ReadSrvConfig()
 	fmt.Printf("Server Config: \n %+v \n", srvCfg)
@@ -233,37 +240,40 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 		app.bankKeeper,
 		app.stakingKeeper,
 		app.distrKeeper,
-		app.keyMP,
-		app.keyRegisterCurrency,
-		app.keyAuction,
-		app.keyDeletedNFT,
+		app.keys[marketplace.StoreKey],
+		app.keys[marketplace.RegisterCurrencyKey],
+		app.keys[marketplace.AuctionKey],
+		app.keys[marketplace.DeletedNFTKey],
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
 		app.nftKeeper,
-		&app.supplyKeeper,
+		&app.mintKeeper,
 		&app.accountKeeper,
-		&app.ibcKeeper,
+		app.ibcKeeper,
 	)
 
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
-	overriddenIBCModule := marketplace.NewIBCModuleMarketplace(ibcModule, &app.ibcKeeper, app.mpKeeper)
 
 	app.mm = module.NewManager(
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
-		auth.NewAppModule(app.accountKeeper),
-		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
-		supply.NewAppModule(app.supplyKeeper, app.accountKeeper),
-		distr.NewAppModule(app.distrKeeper, app.supplyKeeper),
-		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
-		staking.NewAppModule(app.stakingKeeper, app.accountKeeper, app.supplyKeeper),
-
+		auth.NewAppModule(appCodec, app.accountKeeper),
+		bank.NewAppModule(appCodec, app.bankKeeper, app.accountKeeper),
+		capability.NewAppModule(appCodec, *app.capabilityKeeper),
+		mint.NewAppModule(appCodec, app.mintKeeper, app.accountKeeper),
+		slashing.NewAppModule(appCodec, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		distr.NewAppModule(appCodec, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		staking.NewAppModule(appCodec, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
+		evidence.NewAppModule(appCodec, app.evidenceKeeper),
+		ibc.NewAppModule(app.ibcKeeper),
+		params.NewAppModule(app.paramsKeeper),
+		mint.NewAppModule(appCodec, app.mintKeeper, app.accountKeeper),
+		transferModule,
 		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper, app.nftKeeper),
 		overriddenNFTModule,
-		overriddenIBCModule,
 	)
 
-	app.mm.SetOrderBeginBlockers(distr.ModuleName, slashing.ModuleName)
+	app.mm.SetOrderBeginBlockers(distr.ModuleName, mint.ModuleName, slashing.ModuleName)
 	app.mm.SetOrderEndBlockers(staking.ModuleName)
 
 	// Sets the order of Genesis - Order matters, genutil is to always come last
@@ -273,6 +283,7 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 		auth.ModuleName,
 		bank.ModuleName,
 		slashing.ModuleName,
+		mint.ModuleName,
 		nft.ModuleName,
 
 		marketplace.ModuleName,
@@ -286,38 +297,31 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 	// The initChainer handles translating the genesis.json file into initial state for the network
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
-	app.SetEndBlocker(app.EndBlocker)
-
-	// The AnteHandler handles signature verification and transaction pre-processing
 	app.SetAnteHandler(
-		auth.NewAnteHandler(
-			app.accountKeeper, app.supplyKeeper, auth.DefaultSigVerificationGasConsumer,
+		ante.NewAnteHandler(
+			app.accountKeeper, app.bankKeeper, *app.ibcKeeper,
+			ante.DefaultSigVerificationGasConsumer,
 		),
 	)
-	app.MountStores(
-		app.keyMain,
-		app.keyAccount,
-		app.keySupply,
-		app.keyStaking,
-		app.tkeyStaking,
-		app.keyDistr,
-		app.tkeyDistr,
-		app.keySlashing,
-		app.keyNFT,
-		app.keyParams,
-		app.tkeyParams,
 
-		app.keyMP,
-		app.keyRegisterCurrency,
-		app.keyAuction,
-		app.keyIBC,
-		app.keyDeletedNFT,
-	)
+	app.MountKVStores(keys)
+	app.MountTransientStores(tkeys)
+	app.MountMemoryStores(memKeys)
 
-	err := app.LoadLatestVersion(app.keyMain)
-	if err != nil {
-		cmn.Exit(err.Error())
+	if err := app.LoadLatestVersion(); err != nil {
+		tmos.Exit(err.Error())
 	}
+
+	// Initialize and seal the capability keeper so all persistent capabilities
+	// are loaded in-memory and prevent any further modules from creating scoped
+	// sub-keepers.
+	// This must be done during creation of baseapp rather than in InitChain so
+	// that in-memory capabilities get regenerated on app restart
+	ctx := app.BaseApp.NewContext(true, abci.Header{Height: -1})
+	app.capabilityKeeper.InitializeAndSeal(ctx)
+
+	app.scopedIBCKeeper = scopedIBCKeeper
+	app.scopedTransferKeeper = scopedTransferKeeper
 
 	return app
 }
@@ -326,7 +330,8 @@ func NewMarketplaceApp(logger log.Logger, db dbm.DB, baseAppOptions ...func(*bam
 type GenesisState map[string]json.RawMessage
 
 func NewDefaultGenesisState() GenesisState {
-	return ModuleBasics.DefaultGenesis()
+	cdc := std.MakeCodec(ModuleBasics)
+	return ModuleBasics.DefaultGenesis(cdc)
 }
 
 func (app *marketplaceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
@@ -340,18 +345,39 @@ func (app *marketplaceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChai
 		panic(err)
 	}
 
-	return app.mm.InitGenesis(ctx, genesisState)
+	return app.mm.InitGenesis(ctx, app.cdc, genesisState)
 }
 
 func (app *marketplaceApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	return app.mm.BeginBlock(ctx, req)
 }
+
 func (app *marketplaceApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	app.mpKeeper.CheckFinishedAuctions(ctx)
 	return app.mm.EndBlock(ctx, req)
 }
 func (app *marketplaceApp) LoadHeight(height int64) error {
-	return app.LoadVersion(height, app.keyMain)
+	return app.LoadVersion(height)
+}
+
+// ModuleAccountAddrs returns all the app's module account addresses.
+func (app *marketplaceApp) ModuleAccountAddrs() map[string]bool {
+	modAccAddrs := make(map[string]bool)
+	for acc := range maccPerms {
+		modAccAddrs[auth.NewModuleAddress(acc).String()] = true
+	}
+
+	return modAccAddrs
+}
+
+// BlacklistedAccAddrs returns all the app's module account addresses black listed for receiving tokens.
+func (app *marketplaceApp) BlacklistedAccAddrs() map[string]bool {
+	blacklistedAddrs := make(map[string]bool)
+	for acc := range maccPerms {
+		blacklistedAddrs[auth.NewModuleAddress(acc).String()] = !allowedReceivingModAcc[acc]
+	}
+
+	return blacklistedAddrs
 }
 
 //_________________________________________________________
@@ -362,7 +388,7 @@ func (app *marketplaceApp) ExportAppStateAndValidators(forZeroHeight bool, jailW
 	// as if they could withdraw from the start of the next block
 	ctx := app.NewContext(true, abci.Header{Height: app.LastBlockHeight()})
 
-	genState := app.mm.ExportGenesis(ctx)
+	genState := app.mm.ExportGenesis(ctx, app.cdc)
 	appState, err = codec.MarshalJSONIndent(app.cdc, genState)
 	if err != nil {
 		return nil, nil, err

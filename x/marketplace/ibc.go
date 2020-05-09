@@ -3,13 +3,13 @@ package marketplace
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/corestario/marketplace/x/marketplace/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/ibc"
 	client "github.com/cosmos/cosmos-sdk/x/ibc/02-client"
 	connection "github.com/cosmos/cosmos-sdk/x/ibc/03-connection"
 	channel "github.com/cosmos/cosmos-sdk/x/ibc/04-channel"
 	transfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
-	"github.com/corestario/marketplace/x/marketplace/types"
 )
 
 type IBCModuleMarketplace struct {
@@ -116,7 +116,7 @@ func HandleMsgRecvPacket(ctx sdk.Context, mpKeeper *Keeper, k *ibc.Keeper, msg t
 	return sdk.Result{Events: ctx.EventManager().Events()}
 }
 
-func HandleMsgTransferNFTByIBC(ctx sdk.Context, k *Keeper, msg MsgTransferNFTByIBC) sdk.Result {
+func HandleMsgTransferNFTByIBC(ctx sdk.Context, k *Keeper, msg MsgTransferNFTByIBC) (*sdk.Result, error) {
 	nft, err := k.GetNFT(ctx, msg.TokenID)
 	if err != nil {
 		return sdk.ResultFromError(err)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/x/mint"
 	"net/http"
 	"strings"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/distribution"
 	channeltypes "github.com/cosmos/cosmos-sdk/x/ibc/04-channel/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
-	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/modules/incubator/nft"
 	pl "github.com/prometheus/common/log"
 )
@@ -40,7 +40,7 @@ type Keeper struct {
 	config                   *config.MPServerConfig
 	msgMetr                  *common.MsgMetrics
 	nftKeeper                *nft.Keeper
-	supplyKeeper             *supply.Keeper
+	mintKeeper               *mint.Keeper
 	accKeeper                *auth.AccountKeeper
 	ibcKeeper                *ibc.Keeper
 	httpCli                  *http.Client
@@ -59,7 +59,7 @@ func NewKeeper(
 	cfg *config.MPServerConfig,
 	msgMetr *common.MsgMetrics,
 	nftKeeper *nft.Keeper,
-	supplyKeeper *supply.Keeper,
+	mintKeeper *mint.Keeper,
 	accKeeper *auth.AccountKeeper,
 	ibcKeeper *ibc.Keeper,
 ) *Keeper {
@@ -75,7 +75,7 @@ func NewKeeper(
 		config:                   cfg,
 		msgMetr:                  msgMetr,
 		nftKeeper:                nftKeeper,
-		supplyKeeper:             supplyKeeper,
+		mintKeeper:               mintKeeper,
 		accKeeper:                accKeeper,
 		ibcKeeper:                ibcKeeper,
 		httpCli:                  &http.Client{Timeout: time.Second * 5},
@@ -236,13 +236,13 @@ func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, de
 		return fmt.Errorf("failed to send coins to comissionAddress")
 	}
 	mintedCoins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
-	sdkErr := k.supplyKeeper.MintCoins(ctx, bank.ModuleName, mintedCoins)
+	sdkErr := k.mintKeeper.MintCoins(ctx, mintedCoins)
 	if sdkErr != nil {
 		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to mint fungible tokens: %v", sdkErr.Error())
 	}
 
-	sdkErr = k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, creator, mintedCoins)
+	sdkErr = k.coinKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, creator, mintedCoins)
 	if sdkErr != nil {
 		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to add coins: %v", sdkErr.Error())
@@ -257,7 +257,7 @@ func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, de
 func (k *Keeper) RegisterBasicDenoms(ctx sdk.Context) {
 	ft := FungibleToken{Creator: []byte{}, Denom: types.DefaultTokenDenom, EmissionAmount: 1}
 	store := ctx.KVStore(k.currencyRegistryStoreKey)
-	k.supplyKeeper.SetSupply(ctx, supply.NewSupply(sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.OneInt()))))
+	k.coinKeeper.SetSupply(ctx, bank.NewSupply(sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.OneInt()))))
 
 	store.Set([]byte(ft.Denom), k.cdc.MustMarshalJSON(ft))
 }
@@ -275,10 +275,10 @@ func (k *Keeper) TransferFungibleTokens(ctx sdk.Context, currencyOwner, recipien
 		return fmt.Errorf("unknown currency")
 	}
 	coins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
-	if err := k.supplyKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
+	if err := k.coinKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
 		return fmt.Errorf("failed to send tokens to module")
 	}
-	if err := k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, recipient, coins); err != nil {
+	if err := k.coinKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, recipient, coins); err != nil {
 		return fmt.Errorf("failed to send tokens to account")
 	}
 	return nil
@@ -310,11 +310,11 @@ func (k *Keeper) BurnFungibleTokens(ctx sdk.Context, currencyOwner sdk.AccAddres
 	}
 
 	coins := sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount)))
-	if err := k.supplyKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
+	if err := k.coinKeeper.SendCoinsFromAccountToModule(ctx, currencyOwner, bank.ModuleName, coins); err != nil {
 		return fmt.Errorf("failed to send tokens to module")
 	}
 
-	err := k.supplyKeeper.BurnCoins(ctx, bank.ModuleName, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount))))
+	err := k.coinKeeper.BurnCoins(ctx, bank.ModuleName, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(amount))))
 	if err != nil {
 		return fmt.Errorf("failed to burn fungible tokens")
 	}
@@ -343,7 +343,7 @@ func (k *Keeper) ReceiveNFTByIBCTransferTx(ctx sdk.Context, data types.NFTPacket
 	if data.Source {
 		prefix := transfer.GetDenomPrefix(packet.GetDestPort(), packet.GetDestChannel())
 		if !strings.HasPrefix(data.CollectionDenom, prefix) {
-			return sdk.ErrInternal(fmt.Sprintf("%s doesn't contain prefix %s", data.CollectionDenom, prefix))
+			return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
 		}
 		senderAddress, err := sdk.AccAddressFromBech32(data.Sender)
 		if err != nil {
@@ -354,7 +354,7 @@ func (k *Keeper) ReceiveNFTByIBCTransferTx(ctx sdk.Context, data types.NFTPacket
 			return err
 		}
 		mintNFTMsg := nft.NewMsgMintNFT(senderAddress, receiverAddress, data.ID, data.CollectionDenom, data.TokenMetadataURI)
-		if res := HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k); !res.IsOK() {
+		if res := HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k); !res.OK() {
 			return errors.New(res.Log)
 		}
 		return nil
@@ -362,7 +362,7 @@ func (k *Keeper) ReceiveNFTByIBCTransferTx(ctx sdk.Context, data types.NFTPacket
 
 	prefix := transfer.GetDenomPrefix(packet.GetSourcePort(), packet.GetSourceChannel())
 	if !strings.HasPrefix(data.CollectionDenom, prefix) {
-		return sdk.ErrInternal(fmt.Sprintf("%s doesn't contain prefix %s", data.CollectionDenom, prefix))
+		return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
 	}
 	escrowAddress := transfer.GetEscrowAddress(packet.GetDestPort(), packet.GetDestChannel())
 	receiver, err := sdk.AccAddressFromBech32(data.Receiver)
@@ -422,7 +422,7 @@ func (k Keeper) createOutgoingTransferNFTByIBCPacket(
 
 		prefix := transfer.GetDenomPrefix(destinationPort, destinationChannel)
 		if !strings.HasPrefix(denom, prefix) {
-			return sdk.ErrInternal(fmt.Sprintf("%s doesn't contain the prefix '%s'", denom, prefix))
+			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
 		}
 
 		if err := k.TransferNFT(ctx, id, sender, escrowAddress); err != nil {
@@ -432,7 +432,7 @@ func (k Keeper) createOutgoingTransferNFTByIBCPacket(
 		// burn voucher from the sender's balance if the source is from another chain
 		prefix := transfer.GetDenomPrefix(sourcePort, sourceChannel)
 		if !strings.HasPrefix(denom, prefix) {
-			return sdk.ErrInternal(fmt.Sprintf("%s doesn't contain the prefix '%s'", denom, prefix))
+			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
 		}
 		if err := k.BurnNFT(ctx, id); err != nil {
 			return err
@@ -455,13 +455,14 @@ func (k Keeper) createOutgoingTransferNFTByIBCPacket(
 	}
 
 	packet := channeltypes.NewPacket(
+		packetDataBz,
 		seq,
-		uint64(ctx.BlockHeight())+transfer.DefaultPacketTimeout,
 		sourcePort,
 		sourceChannel,
 		destinationPort,
 		destinationChannel,
-		packetDataBz,
+		uint64(ctx.BlockHeight())+transfer.DefaultPacketTimeoutHeight,
+		transfer.DefaultPacketTimeoutTimestamp,
 	)
 
 	return k.ibcKeeper.ChannelKeeper.SendPacket(ctx, packet, k.ibcKeeper.PortKeeper.BindPort(bank.ModuleName))
