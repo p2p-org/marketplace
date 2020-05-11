@@ -1,10 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	transferCli "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer/client/cli"
 	"strconv"
 	"strings"
 	"time"
@@ -14,8 +14,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth"
+	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,7 +29,7 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	marketplaceTxCmd.AddCommand(
+	marketplaceTxCmd.AddCommand(flags.PostCommands(
 		GetCmdPutNFTOnMarket(cdc),
 		GetCmdRemoveNFTFromMarket(cdc),
 		GetCmdBuyNFT(cdc),
@@ -50,8 +50,8 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		GetCmdBatchRemoveFromMarket(cdc),
 		GetCmdBatchBuyOnMarket(cdc),
 		GetCmdRemoveOffer(cdc),
-		GetTransferNFTTxCmd(cdc),
-	)
+		//GetTransferNFTTxCmd(cdc),
+	)...)
 
 	return marketplaceTxCmd
 }
@@ -62,7 +62,8 @@ func GetCmdPutNFTOnMarket(cdc *codec.Codec) *cobra.Command {
 		Short: "put on market an NFT (token can be bought for the specified price)",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			price, err := sdk.ParseCoins(args[1])
@@ -80,7 +81,7 @@ func GetCmdPutNFTOnMarket(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -91,7 +92,8 @@ func GetCmdRemoveNFTFromMarket(cdc *codec.Codec) *cobra.Command {
 		Short: "remove an NFT from market",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			msg := types.NewMsgRemoveNFTFromMarket(cliCtx.GetFromAddress(), args[0])
@@ -99,7 +101,7 @@ func GetCmdRemoveNFTFromMarket(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -110,7 +112,8 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 		Short: "buy an NFT",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			beneficiary, err := sdk.AccAddressFromBech32(args[1])
@@ -124,7 +127,7 @@ func GetCmdBuyNFT(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -138,7 +141,8 @@ func GetCmdCreateFungibleToken(cdc *codec.Codec) *cobra.Command {
 		Short: "create a fungible token",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			amount, err := strconv.Atoi(args[1])
 			if err != nil {
@@ -150,7 +154,7 @@ func GetCmdCreateFungibleToken(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -161,7 +165,8 @@ func GetCmdTransferFungibleTokens(cdc *codec.Codec) *cobra.Command {
 		Short: "transfer fungible tokens to another account",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			recipient, err := sdk.AccAddressFromBech32(args[0])
@@ -179,7 +184,7 @@ func GetCmdTransferFungibleTokens(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -190,7 +195,8 @@ func GetCmdUpdateNFTParams(cdc *codec.Codec) *cobra.Command {
 		Short: "update params of an NFT",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			params := make([]types.NFTParam, 0)
 			if price := viper.GetString(types.FlagParamPrice); price != "" {
@@ -214,7 +220,7 @@ func GetCmdUpdateNFTParams(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().StringP(types.FlagParamPrice, types.FlagParamPriceShort, "", "new nft price, if left blank will not be changed")
@@ -231,7 +237,8 @@ func GetCmdPutNFTOnAuction(cdc *codec.Codec) *cobra.Command {
 		Short: "put on auction an NFT (token will be traded in specified time or returned to owner)",
 		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			openingPrice, err := sdk.ParseCoins(args[1])
@@ -260,7 +267,7 @@ func GetCmdPutNFTOnAuction(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().StringP(types.FlagParamBuyoutPrice, types.FlagParamBuyoutPriceShort, "",
@@ -274,7 +281,8 @@ func GetCmdRemoveNFTFromAuction(cdc *codec.Codec) *cobra.Command {
 		Short: "remove an NFT from action",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			msg := types.NewMsgRemoveNFTFromAuction(cliCtx.GetFromAddress(), args[0])
@@ -282,7 +290,7 @@ func GetCmdRemoveNFTFromAuction(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -293,7 +301,8 @@ func GetCmdFinishAuction(cdc *codec.Codec) *cobra.Command {
 		Short: "finish an NFT action",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			msg := types.NewMsgFinishAuction(cliCtx.GetFromAddress(), args[0])
@@ -301,7 +310,7 @@ func GetCmdFinishAuction(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -312,7 +321,8 @@ func GetCmdMakeBidOnAuction(cdc *codec.Codec) *cobra.Command {
 		Short: "make a bid for an NFT on auction",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			beneficiary, err := sdk.AccAddressFromBech32(args[1])
@@ -330,7 +340,7 @@ func GetCmdMakeBidOnAuction(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -344,7 +354,8 @@ func GetCmdBuyoutFromAuction(cdc *codec.Codec) *cobra.Command {
 		Short: "buyout an NFT from auction",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			beneficiary, err := sdk.AccAddressFromBech32(args[1])
@@ -358,7 +369,7 @@ func GetCmdBuyoutFromAuction(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -372,7 +383,8 @@ func GetCmdBurnFungibleTokens(cdc *codec.Codec) *cobra.Command {
 		Short: "burn some amount of owned fungible tokens",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			amount, err := strconv.Atoi(args[1])
@@ -385,7 +397,7 @@ func GetCmdBurnFungibleTokens(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 }
@@ -396,7 +408,8 @@ func GetCmdMakeOffer(cdc *codec.Codec) *cobra.Command {
 		Short: "offer a price for an NFT that is not currently on sale",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			beneficiary, err := sdk.AccAddressFromBech32(args[2])
@@ -415,7 +428,7 @@ func GetCmdMakeOffer(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -429,7 +442,8 @@ func GetCmdAcceptOffer(cdc *codec.Codec) *cobra.Command {
 		Short: "accept an offer",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			beneficiary, err := sdk.AccAddressFromBech32(args[2])
@@ -444,13 +458,13 @@ func GetCmdAcceptOffer(cdc *codec.Codec) *cobra.Command {
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
-			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			txBldr, err = authclient.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
 			if err != nil {
 				return err
 			}
 			txBldr = txBldr.WithGas(5 * txBldr.Gas())
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -464,7 +478,8 @@ func GetCmdRemoveOffer(cdc *codec.Codec) *cobra.Command {
 		Short: "remove an offer",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			tokenID, offerID := args[0], args[1]
 			msg := types.NewMsgRemoveOffer(cliCtx.GetFromAddress(), tokenID, offerID)
@@ -472,7 +487,7 @@ func GetCmdRemoveOffer(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	return cmd
@@ -484,7 +499,8 @@ func GetCmdBatchTransfer(cdc *codec.Codec) *cobra.Command {
 		Short: "transfer several tokens at once",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			recipient, err := sdk.AccAddressFromBech32(args[0])
 			if err != nil {
@@ -500,7 +516,7 @@ func GetCmdBatchTransfer(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -514,7 +530,8 @@ func GetCmdBatchPutOnMarket(cdc *codec.Codec) *cobra.Command {
 		Short: "put on market several tokens at once",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
@@ -546,13 +563,13 @@ func GetCmdBatchPutOnMarket(cdc *codec.Codec) *cobra.Command {
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
-			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			txBldr, err = authclient.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
 			if err != nil {
 				return err
 			}
 			txBldr = txBldr.WithGas(5 * txBldr.Gas())
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	return cmd
@@ -564,7 +581,8 @@ func GetCmdBatchRemoveFromMarket(cdc *codec.Codec) *cobra.Command {
 		Short: "remove batch from market",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			ids := strings.Split(args[0], ",")
@@ -578,12 +596,12 @@ func GetCmdBatchRemoveFromMarket(cdc *codec.Codec) *cobra.Command {
 			}
 
 			var err error
-			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			txBldr, err = authclient.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
 			if err != nil {
 				return err
 			}
 			txBldr = txBldr.WithGas(5 * txBldr.Gas())
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	return cmd
@@ -595,7 +613,8 @@ func GetCmdBatchBuyOnMarket(cdc *codec.Codec) *cobra.Command {
 		Short: "buy on market several tokens at once",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			commission := viper.GetString(types.FlagBeneficiaryCommission)
 
@@ -613,12 +632,12 @@ func GetCmdBatchBuyOnMarket(cdc *codec.Codec) *cobra.Command {
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
-			txBldr, err = utils.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
+			txBldr, err = authclient.EnrichWithGas(txBldr, cliCtx, []sdk.Msg{msg})
 			if err != nil {
 				return err
 			}
 			txBldr = txBldr.WithGas(5 * txBldr.Gas())
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return authclient.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
 	cmd.Flags().Float64P(types.FlagBeneficiaryCommission, types.FlagBeneficiaryCommissionShort, types.DefaultBeneficiariesCommission,
@@ -626,33 +645,35 @@ func GetCmdBatchBuyOnMarket(cdc *codec.Codec) *cobra.Command {
 	return cmd
 }
 
-func GetTransferNFTTxCmd(cdc *codec.Codec) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "transferNFT [src-port] [src-channel] [receiver] [tokenID]",
-		Short: "Transfer fungible token through IBC",
-		Args:  cobra.ExactArgs(4),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-			ctx := context.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
-
-			sender := ctx.GetFromAddress()
-			srcPort := args[0]
-			srcChannel := args[1]
-			receiver, err := sdk.AccAddressFromBech32(args[2])
-			if err != nil {
-				return err
-			}
-
-			source := viper.GetBool(transferCli.FlagSource)
-
-			msg := types.NewMsgTransferNFTByIBC(srcPort, srcChannel, args[3], sender, receiver, source)
-			if err := msg.ValidateBasic(); err != nil {
-				return err
-			}
-
-			return utils.GenerateOrBroadcastMsgs(ctx, txBldr, []sdk.Msg{msg})
-		},
-	}
-	cmd.Flags().Bool(transferCli.FlagSource, false, "Pass flag for sending token from the source chain")
-	return cmd
-}
+//
+//func GetTransferNFTTxCmd(cdc *codec.Codec) *cobra.Command {
+//	cmd := &cobra.Command{
+//		Use:   "transferNFT [src-port] [src-channel] [receiver] [tokenID]",
+//		Short: "Transfer fungible token through IBC",
+//		Args:  cobra.ExactArgs(4),
+//		RunE: func(cmd *cobra.Command, args []string) error {
+//			inBuf := bufio.NewReader(cmd.InOrStdin())
+//			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
+//			ctx := context.NewCLIContext().WithCodec(cdc).WithBroadcastMode(flags.BroadcastBlock)
+//
+//			sender := ctx.GetFromAddress()
+//			srcPort := args[0]
+//			srcChannel := args[1]
+//			receiver, err := sdk.AccAddressFromBech32(args[2])
+//			if err != nil {
+//				return err
+//			}
+//
+//			source := viper.GetBool(transferCli.FlagSource)
+//
+//			msg := types.NewMsgTransferNFTByIBC(srcPort, srcChannel, args[3], sender, receiver, source)
+//			if err := msg.ValidateBasic(); err != nil {
+//				return err
+//			}
+//
+//			return authclient.GenerateOrBroadcastMsgs(ctx, txBldr, []sdk.Msg{msg})
+//		},
+//	}
+//	cmd.Flags().Bool(transferCli.FlagSource, false, "Pass flag for sending token from the source chain")
+//	return cmd
+//}

@@ -52,9 +52,9 @@ func CustomNFTHandler(nftKeeper *nft.Keeper, mpKeeper *Keeper) sdk.Handler {
 // HandleMsgMintNFTMarketplace handles MsgMintNFT
 func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) (*sdk.Result, error) {
 	mpKeeper.increaseCounter(common.PrometheusValueReceived, common.PrometheusValueMsgTransferNFT)
-	res := nft.HandleMsgTransferNFT(ctx, msg, *nftKeeper)
-	if !res.IsOK() {
-		return nil, fmt.Errorf("???????") //TODO: return error
+	res, err := nft.HandleMsgTransferNFT(ctx, msg, *nftKeeper)
+	if err != nil {
+		return nil, err //TODO: return error
 	}
 
 	// Create an account for recipient.
@@ -62,12 +62,12 @@ func HandleMsgTransferNFTMarketplace(ctx sdk.Context, msg nft.MsgTransferNFT, nf
 		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Recipient))
 	}
 
-	err := mpKeeper.TransferNFT(ctx, msg.ID, msg.Sender, msg.Recipient)
+	err = mpKeeper.TransferNFT(ctx, msg.ID, msg.Sender, msg.Recipient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to TransferNFT: %v", err)
 	}
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgTransferNFT)
-	return &res, nil
+	return res, nil
 }
 
 // HandleMsgMintNFTMarketplace handles MsgMintNFT
@@ -84,9 +84,9 @@ func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper 
 		mpKeeper.accKeeper.SetAccount(ctx, mpKeeper.accKeeper.NewAccountWithAddress(ctx, msg.Recipient))
 	}
 
-	res := nft.HandleMsgMintNFT(ctx, msg, *nftKeeper)
-	if !res.IsOK() {
-		return res
+	res, err := nft.HandleMsgMintNFT(ctx, msg, *nftKeeper)
+	if err != nil {
+		return nil, err
 	}
 
 	mpNFToken := NewNFT(msg.ID, msg.Denom, msg.Recipient, sdk.NewCoins(sdk.NewCoin(types.DefaultTokenDenom, sdk.NewInt(0))))
@@ -95,7 +95,7 @@ func HandleMsgMintNFTMarketplace(ctx sdk.Context, msg nft.MsgMintNFT, nftKeeper 
 	}
 
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgMintNFT)
-	return nil, nil
+	return res, nil
 }
 
 func HandleMsgBurnNFTMarketplace(ctx sdk.Context, msg nft.MsgBurnNFT, nftKeeper *nft.Keeper, mpKeeper *Keeper) (*sdk.Result, error) {
@@ -109,9 +109,9 @@ func HandleMsgBurnNFTMarketplace(ctx sdk.Context, msg nft.MsgBurnNFT, nftKeeper 
 			return nil, err
 		}
 	}
-	res := nft.HandleMsgBurnNFT(ctx, msg, *nftKeeper)
-	if !res.IsOK() {
-		return res
+	res, err := nft.HandleMsgBurnNFT(ctx, msg, *nftKeeper)
+	if err != nil {
+		return nil, err
 	}
 	if err := mpKeeper.BurnNFT(ctx, msg.ID); err != nil {
 		return nil, fmt.Errorf("failed to BurnNFT: %v", err)
@@ -121,5 +121,5 @@ func HandleMsgBurnNFTMarketplace(ctx sdk.Context, msg nft.MsgBurnNFT, nftKeeper 
 	deletedStore.Set([]byte(msg.ID), []byte{})
 
 	mpKeeper.increaseCounter(common.PrometheusValueAccepted, common.PrometheusValueMsgBurnNFT)
-	return nil, nil
+	return res, nil
 }

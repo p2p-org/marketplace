@@ -56,8 +56,8 @@ func NewHandler(keeper *Keeper) sdk.Handler {
 			return handleMsgTransferFungibleTokens(ctx, keeper, msg)
 		case MsgBurnFungibleToken:
 			return handleMsgBurnFungibleToken(ctx, keeper, msg)
-		case MsgTransferNFTByIBC:
-			return HandleMsgTransferNFTByIBC(ctx, keeper, msg)
+		//case MsgTransferNFTByIBC:
+		//	return HandleMsgTransferNFTByIBC(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized marketplace Msg type: %v", msg.Type())
 			return nil, fmt.Errorf(errMsg)

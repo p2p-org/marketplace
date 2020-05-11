@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
 // --------------------------------------------------------------------------
@@ -38,18 +39,18 @@ func (m MsgPutNFTOnMarket) Route() string { return RouterKey }
 func (m MsgPutNFTOnMarket) Type() string { return "put_on_market_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgPutNFTOnMarket) ValidateBasic() sdk.Error {
+func (m MsgPutNFTOnMarket) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrUnknownAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.Price.IsZero() || m.Price.IsAnyNegative() {
-		return sdk.ErrUnknownRequest("Price cannot be zero or negative")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -89,15 +90,15 @@ func (m MsgRemoveNFTFromMarket) Route() string { return RouterKey }
 func (m MsgRemoveNFTFromMarket) Type() string { return "remove_from_market_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgRemoveNFTFromMarket) ValidateBasic() sdk.Error {
+func (m MsgRemoveNFTFromMarket) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -142,12 +143,12 @@ func (m MsgBuyNFT) Route() string { return RouterKey }
 func (m MsgBuyNFT) Type() string { return "buy_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBuyNFT) ValidateBasic() sdk.Error {
+func (m MsgBuyNFT) ValidateBasic() error {
 	if m.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(m.Buyer.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -186,15 +187,15 @@ func (m MsgCreateFungibleToken) Route() string { return RouterKey }
 
 func (m MsgCreateFungibleToken) Type() string { return "create_fungible_token" }
 
-func (m MsgCreateFungibleToken) ValidateBasic() sdk.Error {
+func (m MsgCreateFungibleToken) ValidateBasic() error {
 	if m.Creator.Empty() {
-		return sdk.ErrInvalidAddress(m.Creator.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.Denom) < MinDenomLength || len(m.Denom) > MaxDenomLength {
-		return sdk.ErrUnknownRequest("denom is not valid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.Amount <= 0 {
-		return sdk.ErrUnknownRequest("amount is invalid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -233,18 +234,18 @@ func (m MsgTransferFungibleTokens) Route() string { return RouterKey }
 
 func (m MsgTransferFungibleTokens) Type() string { return "transfer_coins" }
 
-func (m MsgTransferFungibleTokens) ValidateBasic() sdk.Error {
+func (m MsgTransferFungibleTokens) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if m.Recipient.Empty() {
-		return sdk.ErrInvalidAddress(m.Recipient.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.Denom) < MinDenomLength || len(m.Denom) > MaxDenomLength {
-		return sdk.ErrUnknownRequest("denom is not valid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.Amount <= 0 {
-		return sdk.ErrUnknownRequest("amount is invalid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -301,12 +302,12 @@ func (m MsgUpdateNFTParams) Route() string { return RouterKey }
 func (m MsgUpdateNFTParams) Type() string { return "update_nft_params" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgUpdateNFTParams) ValidateBasic() sdk.Error {
+func (m MsgUpdateNFTParams) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if m.TokenID == "" {
-		return sdk.ErrUnknownRequest(m.TokenID)
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -345,15 +346,15 @@ func (m MsgBurnFungibleTokens) Route() string { return RouterKey }
 
 func (m MsgBurnFungibleTokens) Type() string { return "burn_coins" }
 
-func (m MsgBurnFungibleTokens) ValidateBasic() sdk.Error {
+func (m MsgBurnFungibleTokens) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.Denom) < 3 || len(m.Denom) > 16 {
-		return sdk.ErrUnknownRequest("denom is not valid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.Amount <= 0 {
-		return sdk.ErrUnknownRequest("amount is invalid")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -401,21 +402,21 @@ func (m MsgPutNFTOnAuction) Route() string { return RouterKey }
 func (m MsgPutNFTOnAuction) Type() string { return "put_on_auction_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgPutNFTOnAuction) ValidateBasic() sdk.Error {
+func (m MsgPutNFTOnAuction) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.OpeningPrice.IsZero() || m.OpeningPrice.IsAnyNegative() {
-		return sdk.ErrUnknownRequest("Price cannot be zero or negative")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if m.TimeToSell.IsZero() {
-		return sdk.ErrUnknownRequest("Time cannot be zero")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -452,15 +453,15 @@ func (m MsgRemoveNFTFromAuction) Route() string { return RouterKey }
 func (m MsgRemoveNFTFromAuction) Type() string { return "remove_from_auction_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgRemoveNFTFromAuction) ValidateBasic() sdk.Error {
+func (m MsgRemoveNFTFromAuction) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -507,15 +508,15 @@ func (m MsgMakeBidOnAuction) Route() string { return RouterKey }
 func (m MsgMakeBidOnAuction) Type() string { return "make_bid_on_auction_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgMakeBidOnAuction) ValidateBasic() sdk.Error {
+func (m MsgMakeBidOnAuction) ValidateBasic() error {
 	if m.Bidder.Empty() {
-		return sdk.ErrInvalidAddress(m.Bidder.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -552,15 +553,15 @@ func (m MsgFinishAuction) Route() string { return RouterKey }
 func (m MsgFinishAuction) Type() string { return "finish_auction_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgFinishAuction) ValidateBasic() sdk.Error {
+func (m MsgFinishAuction) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -604,15 +605,15 @@ func (m MsgBuyoutOnAuction) Route() string { return RouterKey }
 func (m MsgBuyoutOnAuction) Type() string { return "buyout_on_auction_nft" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBuyoutOnAuction) ValidateBasic() sdk.Error {
+func (m MsgBuyoutOnAuction) ValidateBasic() error {
 	if m.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(m.Buyer.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -654,16 +655,16 @@ func (m MsgBatchTransfer) Route() string { return RouterKey }
 func (m MsgBatchTransfer) Type() string { return "batch_transfer" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBatchTransfer) ValidateBasic() sdk.Error {
+func (m MsgBatchTransfer) ValidateBasic() error {
 	if m.Sender.Empty() {
-		return sdk.ErrInvalidAddress(m.Sender.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenIDs) == 0 {
-		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	for _, tokenID := range m.TokenIDs {
 		if len(tokenID) > MaxTokenIDLength {
-			return sdk.ErrUnknownRequest("TokenID has invalid format")
+			return sdkerrors.ErrUnknownRequest
 		}
 	}
 
@@ -709,33 +710,33 @@ func (m MsgBatchPutOnMarket) Route() string { return RouterKey }
 func (m MsgBatchPutOnMarket) Type() string { return "batch_put_on_market" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBatchPutOnMarket) ValidateBasic() sdk.Error {
+func (m MsgBatchPutOnMarket) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 
 	if len(m.TokenIDs) == 0 {
-		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 
 	if len(m.TokenPrices) == 0 {
-		return sdk.ErrUnknownRequest("TokenPrices cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 
 	if len(m.TokenIDs) != len(m.TokenPrices) {
-		return sdk.ErrUnknownRequest("TokenPrices cannot be different length with TokenIDs")
+		return sdkerrors.ErrUnknownRequest
 	}
 	for _, tokenID := range m.TokenIDs {
 		tokenID := tokenID
 		if len(tokenID) > MaxTokenIDLength {
-			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+			return sdkerrors.ErrUnknownRequest
 		}
 	}
 
 	for _, price := range m.TokenPrices {
 		price := price
 		if price.IsZero() || price.IsAnyNegative() {
-			return sdk.ErrUnknownRequest("No price cannot be zero or negative")
+			return sdkerrors.ErrUnknownRequest
 		}
 	}
 
@@ -777,17 +778,17 @@ func (m MsgBatchRemoveFromMarket) Route() string { return RouterKey }
 func (m MsgBatchRemoveFromMarket) Type() string { return "batch_remove_from_market" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBatchRemoveFromMarket) ValidateBasic() sdk.Error {
+func (m MsgBatchRemoveFromMarket) ValidateBasic() error {
 	if m.Owner.Empty() {
-		return sdk.ErrInvalidAddress(m.Owner.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenIDs) == 0 {
-		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 
 	for _, tokenID := range m.TokenIDs {
 		if len(tokenID) > MaxTokenIDLength {
-			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+			return sdkerrors.ErrUnknownRequest
 		}
 	}
 
@@ -833,17 +834,17 @@ func (m MsgBatchBuyOnMarket) Route() string { return RouterKey }
 func (m MsgBatchBuyOnMarket) Type() string { return "batch_buy_on_market" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgBatchBuyOnMarket) ValidateBasic() sdk.Error {
+func (m MsgBatchBuyOnMarket) ValidateBasic() error {
 	if m.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(m.Buyer.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenIDs) == 0 {
-		return sdk.ErrUnknownRequest("TokenIDs cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 
 	for _, tokenID := range m.TokenIDs {
 		if len(tokenID) > MaxTokenIDLength {
-			return sdk.ErrUnknownRequest("One of TokenIDs has invalid format")
+			return sdkerrors.ErrUnknownRequest
 		}
 	}
 
@@ -891,15 +892,15 @@ func (m MsgMakeOffer) Route() string { return RouterKey }
 func (m MsgMakeOffer) Type() string { return "make_offer" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgMakeOffer) ValidateBasic() sdk.Error {
+func (m MsgMakeOffer) ValidateBasic() error {
 	if m.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(m.Buyer.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -945,15 +946,15 @@ func (m MsgAcceptOffer) Route() string { return RouterKey }
 func (m MsgAcceptOffer) Type() string { return "accept_offer" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgAcceptOffer) ValidateBasic() sdk.Error {
+func (m MsgAcceptOffer) ValidateBasic() error {
 	if m.Seller.Empty() {
-		return sdk.ErrInvalidAddress(m.Seller.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -995,18 +996,18 @@ func (m MsgRemoveOffer) Route() string { return RouterKey }
 func (m MsgRemoveOffer) Type() string { return "remove_offer" }
 
 // ValidateBasic runs stateless checks on the message
-func (m MsgRemoveOffer) ValidateBasic() sdk.Error {
+func (m MsgRemoveOffer) ValidateBasic() error {
 	if m.Buyer.Empty() {
-		return sdk.ErrInvalidAddress(m.Buyer.String())
+		return sdkerrors.ErrInvalidAddress
 	}
 	if len(m.OfferID) == 0 {
-		return sdk.ErrUnknownRequest("OfferID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) == 0 {
-		return sdk.ErrUnknownRequest("TokenID cannot be empty")
+		return sdkerrors.ErrUnknownRequest
 	}
 	if len(m.TokenID) > MaxTokenIDLength {
-		return sdk.ErrUnknownRequest("TokenID has invalid format")
+		return sdkerrors.ErrUnknownRequest
 	}
 	return nil
 }
@@ -1054,7 +1055,7 @@ func (MsgTransferNFTByIBC) Type() string {
 }
 
 // ValidateBasic implements sdk.Msg
-func (msg MsgTransferNFTByIBC) ValidateBasic() sdk.Error {
+func (msg MsgTransferNFTByIBC) ValidateBasic() error {
 	return nil
 }
 

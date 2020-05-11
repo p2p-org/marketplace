@@ -3,8 +3,8 @@ module github.com/corestario/marketplace
 go 1.12
 
 require (
-	github.com/cosmos/cosmos-sdk v0.34.4-0.20200430150743-930802e7a13c
-	github.com/cosmos/modules/incubator/nft v0.0.0-20191015123508-50d0c8092493
+	github.com/cosmos/cosmos-sdk v0.38.0
+	github.com/cosmos/modules/incubator/nft v0.0.0-20200409061055-9d5a3d97f9b1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/magiconair/properties v1.8.1
@@ -19,3 +19,5 @@ require (
 )
 
 replace github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.34.4-0.20200430150743-930802e7a13c
+
+replace github.com/cosmos/modules/incubator/nft => ./../modules/incubator/nft

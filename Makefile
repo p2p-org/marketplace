@@ -20,8 +20,8 @@ test:
 	go test ./...
 
 build: go.sum
-	go build -mod=readonly $(BUILD_FLAGS) -o build/mpd ./cmd/mpd
-	go build -mod=readonly $(BUILD_FLAGS) -o build/mpcli ./cmd/mpcli
+	go build $(BUILD_FLAGS) -o build/mpd ./cmd/mpd
+	go build $(BUILD_FLAGS) -o build/mpcli ./cmd/mpcli
 
 build-linux: go.sum
 	LEDGER_ENABLED=false GOOS=linux GOARCH=amd64 $(MAKE) build

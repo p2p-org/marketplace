@@ -6,15 +6,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/rest"
 	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	authTypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/modules/incubator/nft"
-	"github.com/corestario/marketplace/x/marketplace/types"
 
 	"github.com/gorilla/mux"
 )
@@ -111,7 +111,7 @@ func broadcastTransaction(
 	}
 
 	txBldr := auth.NewTxBuilder(
-		utils.GetTxEncoder(cliCtx.Codec), bq.AccountNumber, bq.Sequence, gas, gasAdj,
+		authclient.GetTxEncoder(cliCtx.Codec), bq.AccountNumber, bq.Sequence, gas, gasAdj,
 		bq.Simulate, bq.ChainID, bq.Memo, bq.Fees, bq.GasPrices,
 	)
 

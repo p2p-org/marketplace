@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/corestario/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -18,13 +19,14 @@ func GetQueryCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 		SuggestionsMinimumDistance: 2,
 		RunE:                       client.ValidateCmd,
 	}
-	marketplaceQueryCmd.AddCommand(
+	marketplaceQueryCmd.AddCommand(flags.GetCommands(
 		GetCmdNFT(storeKey, cdc),
 		GetCmdNFTs(storeKey, cdc),
 		GetCmdFungibleToken(storeKey, cdc),
 		GetCmdFungibleTokens(storeKey, cdc),
 		GetCmdAuctionLot(storeKey, cdc),
 		GetCmdAuctionLots(storeKey, cdc),
+	)...,
 	)
 	return marketplaceQueryCmd
 }

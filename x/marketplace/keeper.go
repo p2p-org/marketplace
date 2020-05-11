@@ -1,17 +1,10 @@
 package marketplace
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 	"net/http"
-	"strings"
 	"time"
-
-	"github.com/cosmos/cosmos-sdk/x/ibc"
-	"github.com/cosmos/cosmos-sdk/x/ibc/04-channel/exported"
-	transfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
 
 	"github.com/corestario/marketplace/common"
 	"github.com/corestario/marketplace/x/marketplace/config"
@@ -21,7 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/cosmos/cosmos-sdk/x/distribution"
-	channeltypes "github.com/cosmos/cosmos-sdk/x/ibc/04-channel/types"
+	"github.com/cosmos/cosmos-sdk/x/ibc"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/modules/incubator/nft"
 	pl "github.com/prometheus/common/log"
@@ -339,131 +332,131 @@ func (k *Keeper) TransferNFT(ctx sdk.Context, id string, sender, recipient sdk.A
 	return k.UpdateNFT(ctx, token)
 }
 
-func (k *Keeper) ReceiveNFTByIBCTransferTx(ctx sdk.Context, data types.NFTPacketData, packet exported.PacketI) error {
-	if data.Source {
-		prefix := transfer.GetDenomPrefix(packet.GetDestPort(), packet.GetDestChannel())
-		if !strings.HasPrefix(data.CollectionDenom, prefix) {
-			return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
-		}
-		senderAddress, err := sdk.AccAddressFromBech32(data.Sender)
-		if err != nil {
-			return err
-		}
-		receiverAddress, err := sdk.AccAddressFromBech32(data.Receiver)
-		if err != nil {
-			return err
-		}
-		mintNFTMsg := nft.NewMsgMintNFT(senderAddress, receiverAddress, data.ID, data.CollectionDenom, data.TokenMetadataURI)
-		if res := HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k); !res.OK() {
-			return errors.New(res.Log)
-		}
-		return nil
-	}
-
-	prefix := transfer.GetDenomPrefix(packet.GetSourcePort(), packet.GetSourceChannel())
-	if !strings.HasPrefix(data.CollectionDenom, prefix) {
-		return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
-	}
-	escrowAddress := transfer.GetEscrowAddress(packet.GetDestPort(), packet.GetDestChannel())
-	receiver, err := sdk.AccAddressFromBech32(data.Receiver)
-	if err != nil {
-		return err
-	}
-	if err := k.TransferNFT(ctx, data.ID, escrowAddress, receiver); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (k *Keeper) SendNFTByIBCTransferTx(ctx sdk.Context, id, denom, tokenURI, sourcePort, sourceChannel string,
-	sender, receiver sdk.AccAddress, isSourceChain bool) error {
-	channel, found := k.ibcKeeper.ChannelKeeper.GetChannel(ctx, sourcePort, sourceChannel)
-	if !found {
-		return errors.New(fmt.Sprintf("channel not found: %s, %s", sourcePort, sourceChannel))
-	}
-
-	destinationPort := channel.Counterparty.PortID
-	destinationChannel := channel.Counterparty.ChannelID
-
-	// get the next sequence
-	sequence, found := k.ibcKeeper.ChannelKeeper.GetNextSequenceSend(ctx, sourcePort, sourceChannel)
-	if !found {
-		return errors.New(fmt.Sprintf("sequence not found: %s, %s", sourcePort, sourceChannel))
-	}
-
-	prefix := transfer.GetDenomPrefix(destinationPort, destinationChannel)
-
-	if isSourceChain {
-		denom = prefix + denom
-	}
-
-	return k.createOutgoingTransferNFTByIBCPacket(ctx, sequence, sourcePort, sourceChannel, destinationPort,
-		destinationChannel, id, denom, tokenURI, sender, receiver, isSourceChain)
-}
-
-func (k Keeper) createOutgoingTransferNFTByIBCPacket(
-	ctx sdk.Context,
-	seq uint64,
-	sourcePort,
-	sourceChannel,
-	destinationPort,
-	destinationChannel string,
-	id,
-	denom,
-	tokenURI string,
-	sender sdk.AccAddress,
-	receiver sdk.AccAddress,
-	isSourceChain bool,
-) error {
-
-	if isSourceChain {
-		// escrow token if the destination chain is the same as the sender's
-		escrowAddress := transfer.GetEscrowAddress(sourcePort, sourceChannel)
-
-		prefix := transfer.GetDenomPrefix(destinationPort, destinationChannel)
-		if !strings.HasPrefix(denom, prefix) {
-			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
-		}
-
-		if err := k.TransferNFT(ctx, id, sender, escrowAddress); err != nil {
-			return err
-		}
-	} else {
-		// burn voucher from the sender's balance if the source is from another chain
-		prefix := transfer.GetDenomPrefix(sourcePort, sourceChannel)
-		if !strings.HasPrefix(denom, prefix) {
-			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
-		}
-		if err := k.BurnNFT(ctx, id); err != nil {
-			return err
-		}
-	}
-
-	packetData := types.NFTPacketData{
-		Sender:           sender.String(),
-		Receiver:         receiver.String(),
-		Source:           isSourceChain,
-		CollectionDenom:  denom,
-		ID:               id,
-		TokenMetadataURI: tokenURI,
-	}
-
-	// TODO: This should be binary-marshaled and hashed (for the commitment in the store).
-	packetDataBz, err := json.Marshal(packetData)
-	if err != nil {
-		return err
-	}
-
-	packet := channeltypes.NewPacket(
-		packetDataBz,
-		seq,
-		sourcePort,
-		sourceChannel,
-		destinationPort,
-		destinationChannel,
-		uint64(ctx.BlockHeight())+transfer.DefaultPacketTimeoutHeight,
-		transfer.DefaultPacketTimeoutTimestamp,
-	)
-
-	return k.ibcKeeper.ChannelKeeper.SendPacket(ctx, packet, k.ibcKeeper.PortKeeper.BindPort(bank.ModuleName))
-}
+//func (k *Keeper) ReceiveNFTByIBCTransferTx(ctx sdk.Context, data types.NFTPacketData, packet exported.PacketI) error {
+//	if data.Source {
+//		prefix := transfer.GetDenomPrefix(packet.GetDestPort(), packet.GetDestChannel())
+//		if !strings.HasPrefix(data.CollectionDenom, prefix) {
+//			return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
+//		}
+//		senderAddress, err := sdk.AccAddressFromBech32(data.Sender)
+//		if err != nil {
+//			return err
+//		}
+//		receiverAddress, err := sdk.AccAddressFromBech32(data.Receiver)
+//		if err != nil {
+//			return err
+//		}
+//		mintNFTMsg := nft.NewMsgMintNFT(senderAddress, receiverAddress, data.ID, data.CollectionDenom, data.TokenMetadataURI)
+//		if res := HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k); !res.OK() {
+//			return errors.New(res.Log)
+//		}
+//		return nil
+//	}
+//
+//	prefix := transfer.GetDenomPrefix(packet.GetSourcePort(), packet.GetSourceChannel())
+//	if !strings.HasPrefix(data.CollectionDenom, prefix) {
+//		return fmt.Errorf("%s doesn't contain prefix %s", data.CollectionDenom, prefix)
+//	}
+//	escrowAddress := transfer.GetEscrowAddress(packet.GetDestPort(), packet.GetDestChannel())
+//	receiver, err := sdk.AccAddressFromBech32(data.Receiver)
+//	if err != nil {
+//		return err
+//	}
+//	if err := k.TransferNFT(ctx, data.ID, escrowAddress, receiver); err != nil {
+//		return err
+//	}
+//	return nil
+//}
+//
+//func (k *Keeper) SendNFTByIBCTransferTx(ctx sdk.Context, id, denom, tokenURI, sourcePort, sourceChannel string,
+//	sender, receiver sdk.AccAddress, isSourceChain bool) error {
+//	channel, found := k.ibcKeeper.ChannelKeeper.GetChannel(ctx, sourcePort, sourceChannel)
+//	if !found {
+//		return errors.New(fmt.Sprintf("channel not found: %s, %s", sourcePort, sourceChannel))
+//	}
+//
+//	destinationPort := channel.Counterparty.PortID
+//	destinationChannel := channel.Counterparty.ChannelID
+//
+//	// get the next sequence
+//	sequence, found := k.ibcKeeper.ChannelKeeper.GetNextSequenceSend(ctx, sourcePort, sourceChannel)
+//	if !found {
+//		return errors.New(fmt.Sprintf("sequence not found: %s, %s", sourcePort, sourceChannel))
+//	}
+//
+//	prefix := transfer.GetDenomPrefix(destinationPort, destinationChannel)
+//
+//	if isSourceChain {
+//		denom = prefix + denom
+//	}
+//
+//	return k.createOutgoingTransferNFTByIBCPacket(ctx, sequence, sourcePort, sourceChannel, destinationPort,
+//		destinationChannel, id, denom, tokenURI, sender, receiver, isSourceChain)
+//}
+//
+//func (k Keeper) createOutgoingTransferNFTByIBCPacket(
+//	ctx sdk.Context,
+//	seq uint64,
+//	sourcePort,
+//	sourceChannel,
+//	destinationPort,
+//	destinationChannel string,
+//	id,
+//	denom,
+//	tokenURI string,
+//	sender sdk.AccAddress,
+//	receiver sdk.AccAddress,
+//	isSourceChain bool,
+//) error {
+//
+//	if isSourceChain {
+//		// escrow token if the destination chain is the same as the sender's
+//		escrowAddress := transfer.GetEscrowAddress(sourcePort, sourceChannel)
+//
+//		prefix := transfer.GetDenomPrefix(destinationPort, destinationChannel)
+//		if !strings.HasPrefix(denom, prefix) {
+//			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
+//		}
+//
+//		if err := k.TransferNFT(ctx, id, sender, escrowAddress); err != nil {
+//			return err
+//		}
+//	} else {
+//		// burn voucher from the sender's balance if the source is from another chain
+//		prefix := transfer.GetDenomPrefix(sourcePort, sourceChannel)
+//		if !strings.HasPrefix(denom, prefix) {
+//			return fmt.Errorf("%s doesn't contain the prefix '%s'", denom, prefix)
+//		}
+//		if err := k.BurnNFT(ctx, id); err != nil {
+//			return err
+//		}
+//	}
+//
+//	packetData := types.NFTPacketData{
+//		Sender:           sender.String(),
+//		Receiver:         receiver.String(),
+//		Source:           isSourceChain,
+//		CollectionDenom:  denom,
+//		ID:               id,
+//		TokenMetadataURI: tokenURI,
+//	}
+//
+//	// TODO: This should be binary-marshaled and hashed (for the commitment in the store).
+//	packetDataBz, err := json.Marshal(packetData)
+//	if err != nil {
+//		return err
+//	}
+//
+//	packet := channeltypes.NewPacket(
+//		packetDataBz,
+//		seq,
+//		sourcePort,
+//		sourceChannel,
+//		destinationPort,
+//		destinationChannel,
+//		uint64(ctx.BlockHeight())+transfer.DefaultPacketTimeoutHeight,
+//		transfer.DefaultPacketTimeoutTimestamp,
+//	)
+//
+//	return k.ibcKeeper.ChannelKeeper.SendPacket(ctx, packet, k.ibcKeeper.PortKeeper.BindPort(bank.ModuleName))
+//}
