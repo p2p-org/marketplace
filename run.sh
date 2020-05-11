@@ -167,5 +167,5 @@ fi
 if [[ -z $NORUN ]]; then
   echo "Starting node..."
   mpcli rest-server --chain-id mpchain --trust-node --laddr tcp://0.0.0.0:1317 > /dev/null &
-  mpd start &> mplog.log
+  mpd start #&> mplog.log
 fi

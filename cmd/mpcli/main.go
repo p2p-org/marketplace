@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/std"
+	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	"os"
 	"path"
 
@@ -26,9 +26,12 @@ const (
 )
 
 var (
-	cdc      = std.MakeCodec(app.ModuleBasics)
-	appCodec = std.NewAppCodec(cdc)
+	appCodec, cdc = app.MakeCodecs()
 )
+
+func init() {
+	authclient.Codec = appCodec
+}
 
 func main() {
 	cobra.EnableCommandSorting = false

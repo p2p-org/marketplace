@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	"github.com/cosmos/cosmos-sdk/x/capability"
@@ -33,8 +34,11 @@ import (
 	transfer "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 	"github.com/cosmos/cosmos-sdk/x/params"
+	paramsclient "github.com/cosmos/cosmos-sdk/x/params/client"
+	paramproposal "github.com/cosmos/cosmos-sdk/x/params/types/proposal"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
+	upgradeclient "github.com/cosmos/cosmos-sdk/x/upgrade/client"
 	"github.com/cosmos/modules/incubator/nft"
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -56,6 +60,7 @@ var (
 		genutil.AppModuleBasic{},
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
+		capability.AppModuleBasic{},
 		params.AppModuleBasic{},
 		mint.AppModuleBasic{},
 		staking.AppModuleBasic{},
@@ -64,8 +69,13 @@ var (
 		slashing.AppModuleBasic{},
 		nft.AppModuleBasic{},
 		ibc.AppModuleBasic{},
+		gov.NewAppModuleBasic(
+			paramsclient.ProposalHandler, distr.ProposalHandler, upgradeclient.ProposalHandler,
+		),
+		upgrade.AppModuleBasic{},
 
 		marketplace.AppModule{},
+		transfer.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -112,6 +122,7 @@ type marketplaceApp struct {
 	mintKeeper       mint.Keeper
 	stakingKeeper    staking.Keeper
 	crisisKeeper     crisis.Keeper
+	govKeeper        gov.Keeper
 	slashingKeeper   slashing.Keeper
 	distrKeeper      distr.Keeper
 	paramsKeeper     params.Keeper
@@ -120,6 +131,7 @@ type marketplaceApp struct {
 	evidenceKeeper   evidence.Keeper
 	transferKeeper   transfer.Keeper
 	capabilityKeeper *capability.Keeper
+	upgradeKeeper    upgrade.Keeper
 
 	mpKeeper *marketplace.Keeper
 
@@ -137,8 +149,10 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 	baseAppOptions ...func(*bam.BaseApp)) *marketplaceApp {
 
 	// First define the top level codec that will be shared by the different modules
-	cdc := std.MakeCodec(ModuleBasics)
-	appCodec := std.NewAppCodec(cdc)
+	//cdc := std.MakeCodec(ModuleBasics)
+	//cdc := std.MakeCodec(ModuleBasics)
+	//appCodec := std.NewAppCodec(cdc)
+	appCodec, cdc := MakeCodecs()
 
 	// BaseApp handles interactions with Tendermint through the ABCI protocol
 	bApp := bam.NewBaseApp(appName, logger, db, auth.DefaultTxDecoder(cdc), baseAppOptions...)
@@ -176,7 +190,6 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 	app.subspaces[slashing.ModuleName] = app.paramsKeeper.Subspace(slashing.DefaultParamspace)
 	app.subspaces[gov.ModuleName] = app.paramsKeeper.Subspace(gov.DefaultParamspace).WithKeyTable(gov.ParamKeyTable())
 	app.subspaces[crisis.ModuleName] = app.paramsKeeper.Subspace(crisis.DefaultParamspace)
-	app.subspaces[crisis.ModuleName] = app.paramsKeeper.Subspace(crisis.DefaultParamspace)
 
 	bApp.SetParamStore(app.paramsKeeper.Subspace(bam.Paramspace).WithKeyTable(std.ConsensusParamsKeyTable()))
 
@@ -207,7 +220,17 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 	app.crisisKeeper = crisis.NewKeeper(
 		app.subspaces[crisis.ModuleName], invCheckPeriod, app.bankKeeper, auth.FeeCollectorName,
 	)
-	//app.upgradeKeeper = upgrade.NewKeeper(skipUpgradeHeights, keys[upgrade.StoreKey], appCodec, DefaultNodeHome)
+	app.upgradeKeeper = upgrade.NewKeeper(skipUpgradeHeights, keys[upgrade.StoreKey], appCodec, DefaultNodeHome)
+
+	govRouter := gov.NewRouter()
+	govRouter.AddRoute(gov.RouterKey, gov.ProposalHandler).
+		AddRoute(paramproposal.RouterKey, params.NewParamChangeProposalHandler(app.paramsKeeper)).
+		AddRoute(distr.RouterKey, distr.NewCommunityPoolSpendProposalHandler(app.distrKeeper)).
+		AddRoute(upgrade.RouterKey, upgrade.NewSoftwareUpgradeProposalHandler(app.upgradeKeeper))
+	app.govKeeper = gov.NewKeeper(
+		appCodec, keys[gov.StoreKey], app.subspaces[gov.ModuleName], app.accountKeeper, app.bankKeeper,
+		&stakingKeeper, govRouter,
+	)
 
 	// The staking keeper
 	app.stakingKeeper = *stakingKeeper.SetHooks(
@@ -215,12 +238,12 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 	)
 
 	app.ibcKeeper = ibc.NewKeeper(
-		app.cdc, keys[ibc.StoreKey], app.stakingKeeper, scopedIBCKeeper,
+		app.cdc, appCodec, keys[ibc.StoreKey], app.stakingKeeper, scopedIBCKeeper,
 	)
 
 	// Create Transfer Keepers
 	app.transferKeeper = transfer.NewKeeper(
-		app.cdc, keys[transfer.StoreKey],
+		appCodec, keys[transfer.StoreKey],
 		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
 		app.accountKeeper, app.bankKeeper,
 		scopedTransferKeeper,
@@ -273,7 +296,9 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		distr.NewAppModule(appCodec, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
 		staking.NewAppModule(appCodec, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
 		crisis.NewAppModule(&app.crisisKeeper),
-		evidence.NewAppModule(appCodec, app.evidenceKeeper),
+		gov.NewAppModule(appCodec, app.govKeeper, app.accountKeeper, app.bankKeeper),
+		upgrade.NewAppModule(app.upgradeKeeper),
+		evidence.NewAppModule(app.evidenceKeeper),
 		ibc.NewAppModule(app.ibcKeeper),
 		params.NewAppModule(app.paramsKeeper),
 		mint.NewAppModule(appCodec, app.mintKeeper, app.accountKeeper),
@@ -282,23 +307,28 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		overriddenNFTModule,
 	)
 
-	app.mm.SetOrderBeginBlockers(distr.ModuleName, mint.ModuleName, slashing.ModuleName)
+	app.mm.SetOrderBeginBlockers(
+		upgrade.ModuleName, mint.ModuleName, distr.ModuleName, slashing.ModuleName,
+		evidence.ModuleName, staking.ModuleName, ibc.ModuleName,
+	)
 	app.mm.SetOrderEndBlockers(crisis.ModuleName, gov.ModuleName, staking.ModuleName)
 
 	// Sets the order of Genesis - Order matters, genutil is to always come last
 	app.mm.SetOrderInitGenesis(
+		capability.ModuleName,
+		auth.ModuleName,
 		distr.ModuleName,
 		staking.ModuleName,
-		auth.ModuleName,
 		bank.ModuleName,
 		slashing.ModuleName,
+		gov.ModuleName,
 		mint.ModuleName,
 		crisis.ModuleName,
 		nft.ModuleName,
-
-		marketplace.ModuleName,
-
+		ibc.ModuleName,
 		genutil.ModuleName,
+		transfer.ModuleName,
+		marketplace.ModuleName,
 	)
 
 	app.mm.RegisterInvariants(&app.crisisKeeper)
@@ -543,6 +573,17 @@ func (app *marketplaceApp) prepForZeroHeightGenesis(ctx sdk.Context, jailWhiteLi
 			return false
 		},
 	)
+}
+
+func MakeCodecs() (*std.Codec, *codec.Codec) {
+	cdc := std.MakeCodec(ModuleBasics)
+	interfaceRegistry := cdctypes.NewInterfaceRegistry()
+	appCodec := std.NewAppCodec(cdc, interfaceRegistry)
+
+	sdk.RegisterInterfaces(interfaceRegistry)
+	ModuleBasics.RegisterInterfaceModules(interfaceRegistry)
+
+	return appCodec, cdc
 }
 
 func ReadSrvConfig() *config.MPServerConfig {

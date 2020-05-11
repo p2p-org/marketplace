@@ -35,16 +35,16 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
-var (
-	cdc      = std.MakeCodec(app.ModuleBasics)
-	appCodec = std.NewAppCodec(cdc)
-)
-
 const flagInvCheckPeriod = "inv-check-period"
 
 var invCheckPeriod uint
 
+var (
+	appCodec, cdc = app.MakeCodecs()
+)
+
 func main() {
+
 	cobra.EnableCommandSorting = false
 
 	config := sdk.GetConfig()
