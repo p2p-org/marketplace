@@ -38,3 +38,100 @@ localnet-start: build-linux localnet-stop
 localnet-stop:
 	docker-compose down
 .PHONY: test
+
+###############################################################################
+###                                Protobuf                                 ###
+###############################################################################
+
+proto-all: proto-tools proto-gen proto-lint proto-check-breaking
+
+proto-gen:
+	@./scripts/protocgen.sh
+
+# This generates the SDK's custom wrapper for google.protobuf.Any. It should only be run manually when needed
+proto-gen-any:
+	@./scripts/protocgen-any.sh
+
+proto-lint:
+	@buf check lint --error-format=json
+
+proto-check-breaking:
+	@buf check breaking --against-input '.git#branch=master'
+
+proto-lint-docker:
+	@$(DOCKER_BUF) check lint --error-format=json
+.PHONY: proto-lint
+
+proto-check-breaking-docker:
+	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+.PHONY: proto-check-breaking-ci
+
+TM_URL           = https://raw.githubusercontent.com/tendermint/tendermint/v0.33.1
+GOGO_PROTO_URL   = https://raw.githubusercontent.com/regen-network/protobuf/cosmos
+COSMOS_PROTO_URL = https://raw.githubusercontent.com/regen-network/cosmos-proto/master
+
+TM_KV_TYPES         = third_party/proto/tendermint/libs/kv
+TM_MERKLE_TYPES     = third_party/proto/tendermint/crypto/merkle
+TM_ABCI_TYPES       = third_party/proto/tendermint/abci/types
+GOGO_PROTO_TYPES    = third_party/proto/gogoproto
+COSMOS_PROTO_TYPES  = third_party/proto/cosmos-proto
+SDK_PROTO_TYPES     = third_party/proto/cosmos-sdk/types
+AUTH_PROTO_TYPES    = third_party/proto/cosmos-sdk/x/auth/types
+VESTING_PROTO_TYPES = third_party/proto/cosmos-sdk/x/auth/vesting/types
+SUPPLY_PROTO_TYPES  = third_party/proto/cosmos-sdk/x/supply/types
+
+proto-update-deps:
+	@mkdir -p $(GOGO_PROTO_TYPES)
+	@curl -sSL $(GOGO_PROTO_URL)/gogoproto/gogo.proto > $(GOGO_PROTO_TYPES)/gogo.proto
+
+	@mkdir -p $(COSMOS_PROTO_TYPES)
+	@curl -sSL $(COSMOS_PROTO_URL)/cosmos.proto > $(COSMOS_PROTO_TYPES)/cosmos.proto
+
+	@mkdir -p $(TM_ABCI_TYPES)
+	@curl -sSL $(TM_URL)/abci/types/types.proto > $(TM_ABCI_TYPES)/types.proto
+	@sed -i '' '8 s|crypto/merkle/merkle.proto|third_party/proto/tendermint/crypto/merkle/merkle.proto|g' $(TM_ABCI_TYPES)/types.proto
+	@sed -i '' '9 s|libs/kv/types.proto|third_party/proto/tendermint/libs/kv/types.proto|g' $(TM_ABCI_TYPES)/types.proto
+
+	@mkdir -p $(TM_KV_TYPES)
+	@curl -sSL $(TM_URL)/libs/kv/types.proto > $(TM_KV_TYPES)/types.proto
+
+	@mkdir -p $(TM_MERKLE_TYPES)
+	@curl -sSL $(TM_URL)/crypto/merkle/merkle.proto > $(TM_MERKLE_TYPES)/merkle.proto
+
+
+.PHONY: proto-all proto-gen proto-lint proto-check-breaking proto-update-deps
+
+
+proto-tools: proto-tools-stamp
+proto-tools-stamp:
+	@echo "Installing protoc compiler..."
+	@(cd /tmp; \
+	curl -OL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}"; \
+	unzip -o ${PROTOC_ZIP} -d $(PREFIX) bin/protoc; \
+	unzip -o ${PROTOC_ZIP} -d $(PREFIX) 'include/*'; \
+	rm -f ${PROTOC_ZIP})
+
+	@echo "Installing protoc-gen-buf-check-breaking..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/protoc-gen-buf-check-breaking-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/protoc-gen-buf-check-breaking" && \
+	chmod +x "${BIN}/protoc-gen-buf-check-breaking"
+
+	@echo "Installing buf..."
+	@curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-${UNAME_S}-${UNAME_M}" \
+    -o "${BIN}/buf" && \
+	chmod +x "${BIN}/buf"
+
+	touch $@
+
+protoc-gen-gocosmos:
+	@echo "Installing protoc-gen-gocosmos..."
+	@go install github.com/regen-network/cosmos-proto/protoc-gen-gocosmos
+
+tools-clean:
+	rm -f $(STATIK) $(GOLANGCI_LINT) $(RUNSIM)
+	rm -f tools-stamp proto-tools-stamp
+
+.PHONY: tools-clean statik runsim \
+	protoc-gen-gocosmos

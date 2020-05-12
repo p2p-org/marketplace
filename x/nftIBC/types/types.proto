@@ -1,0 +1,47 @@
+syntax = "proto3";
+package marketplace.x.nftIBC.v1;
+
+option go_package = "github.com/corestario/marketplace/x/nftIBC/types";
+
+import "third_party/proto/gogoproto/gogo.proto";
+
+message MsgTransferNFT {
+  // the port on which the packet will be sent
+  string source_port = 1 [
+  (gogoproto.moretags) = "yaml:\"source_port\""
+  ];
+  // the channel by which the packet will be sent
+  string source_channel = 2 [
+  (gogoproto.moretags) = "yaml:\"source_channel\""
+  ];
+  // the current height of the destination chain
+  uint64 destination_height = 3 [
+  (gogoproto.moretags) = "yaml:\"destination_height\""
+  ];
+  string id = 4;
+  string denom= 5;
+  // the sender address
+  bytes sender = 6 [
+  (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
+  ];
+  // the recipient address on the destination chain
+  string receiver = 7;
+}
+
+
+message NFTPacketData {
+  string id = 1;
+  string denom = 2;
+  bytes owner = 3 [
+    (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
+  ];
+  bytes receiver = 4 [
+    (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
+  ];
+}
+
+
+message NFTPacketAcknowledgement {
+  bool   success = 1;
+  string error   = 2;
+}

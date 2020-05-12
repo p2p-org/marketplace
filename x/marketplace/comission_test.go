@@ -221,7 +221,10 @@ func (mp *marketplaceKeeperTest) updateVoteInfos(validatorsCount int, coins sdk.
 	voteInfos := make([]abci.VoteInfo, 0, validatorsCount)
 	for i := 0; i < validatorsCount; i++ {
 		pv := tmTypes.NewMockPV()
-		pubKey := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey()
+		if err != nil {
+			return nil, err
+		}
 		voteInfo := abci.NewPopulatedVoteInfo(rand.New(rand.NewSource(time.Now().UnixNano())), true)
 		voteInfo.Validator.Address = pubKey.Address()
 		voteInfo.SignedLastBlock = true
@@ -232,7 +235,7 @@ func (mp *marketplaceKeeperTest) updateVoteInfos(validatorsCount int, coins sdk.
 		mp.stakingKeeper.SetValidator(mp.ctx, val)
 		mp.stakingKeeper.SetValidatorByConsAddr(mp.ctx, val)
 		mp.distrKeeper.SetValidatorCurrentRewards(mp.ctx, val.GetOperator(),
-			distrTypes.NewValidatorCurrentRewards(sdk.NewDecCoins(coins), 10))
+			distrTypes.NewValidatorCurrentRewards(sdk.NewDecCoinsFromCoins(coins...), 10))
 		mp.distrKeeper.SetValidatorOutstandingRewards(mp.ctx, val.GetOperator(), sdk.NewDecCoins(coins))
 		voteInfos = append(voteInfos, *voteInfo)
 	}
