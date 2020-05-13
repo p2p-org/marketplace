@@ -140,8 +140,9 @@ type marketplaceApp struct {
 	mpKeeper *marketplace.Keeper
 
 	// make scoped keepers public for test purposes
-	scopedIBCKeeper      capability.ScopedKeeper
-	scopedTransferKeeper capability.ScopedKeeper
+	scopedIBCKeeper         capability.ScopedKeeper
+	scopedTransferKeeper    capability.ScopedKeeper
+	scopedTransferNFTKeeper capability.ScopedKeeper
 
 	// Module Manager
 	mm *module.Manager
@@ -200,6 +201,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 	app.capabilityKeeper = capability.NewKeeper(appCodec, keys[capability.StoreKey], memKeys[capability.MemStoreKey])
 	scopedIBCKeeper := app.capabilityKeeper.ScopeToModule(ibc.ModuleName)
 	scopedTransferKeeper := app.capabilityKeeper.ScopeToModule(transfer.ModuleName)
+	scopedTransferNFTKeeper := app.capabilityKeeper.ScopeToModule(transferNFT.ModuleName)
 
 	app.accountKeeper = auth.NewAccountKeeper(
 		appCodec, keys[auth.StoreKey], app.subspaces[auth.ModuleName], auth.ProtoBaseAccount, maccPerms,
@@ -287,7 +289,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		appCodec, keys[transferNFT.StoreKey],
 		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
 		app.accountKeeper, app.bankKeeper,
-		scopedTransferKeeper, *app.mpKeeper, *app.nftKeeper,
+		scopedTransferNFTKeeper, *app.mpKeeper, *app.nftKeeper,
 	)
 	transferNFTModule := transferNFT.NewAppModule(app.transferNFTKeeper)
 
@@ -316,6 +318,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		params.NewAppModule(app.paramsKeeper),
 		mint.NewAppModule(appCodec, app.mintKeeper, app.accountKeeper),
 		transferModule,
+		transferNFTModule,
 		marketplace.NewAppModule(app.mpKeeper, app.bankKeeper, app.nftKeeper),
 		overriddenNFTModule,
 	)
@@ -341,6 +344,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		ibc.ModuleName,
 		genutil.ModuleName,
 		transfer.ModuleName,
+		transferNFT.ModuleName,
 		marketplace.ModuleName,
 	)
 
@@ -377,6 +381,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 
 	app.scopedIBCKeeper = scopedIBCKeeper
 	app.scopedTransferKeeper = scopedTransferKeeper
+	app.scopedTransferNFTKeeper = scopedTransferNFTKeeper
 
 	return app
 }

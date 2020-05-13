@@ -38,6 +38,7 @@ message NFTPacketData {
   bytes receiver = 4 [
     (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
   ];
+  string tokenURI = 5;
 }
 
 

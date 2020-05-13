@@ -124,7 +124,7 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet, data t
 	source := strings.HasPrefix(data.Denom, prefix)
 
 	if source {
-		mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Receiver, data.Id, data.Id, data.TokenMetadataURI)
+		mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Receiver, data.Id, data.Id, data.TokenURI)
 		if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func (k Keeper) refundPacketAmount(ctx sdk.Context, packet channeltypes.Packet, 
 	}
 
 	// mint vouchers back to sender
-	mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Owner, data.Id, data.Id, data.TokenMetadataURI)
+	mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Owner, data.Id, data.Id, data.TokenURI)
 	if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
 		return err
 	}

@@ -272,7 +272,7 @@ func (am AppModule) OnRecvPacket(
 		sdk.NewEvent(
 			EventTypePacket,
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
-			sdk.NewAttribute(AttributeKeyReceiver, data.Receiver),
+			sdk.NewAttribute(AttributeKeyReceiver, string(data.Receiver)),
 			sdk.NewAttribute(AttributeKeyValue, data.Id),
 		),
 	)
@@ -304,7 +304,7 @@ func (am AppModule) OnAcknowledgementPacket(
 		sdk.NewEvent(
 			EventTypePacket,
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
-			sdk.NewAttribute(AttributeKeyReceiver, data.Receiver),
+			sdk.NewAttribute(AttributeKeyReceiver, string(data.Receiver)),
 			sdk.NewAttribute(AttributeKeyValue, data.Id),
 			sdk.NewAttribute(AttributeKeyAckSuccess, fmt.Sprintf("%t", ack.Success)),
 		),
@@ -340,7 +340,7 @@ func (am AppModule) OnTimeoutPacket(
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			EventTypeTimeout,
-			sdk.NewAttribute(AttributeKeyRefundReceiver, data.Owner),
+			sdk.NewAttribute(AttributeKeyRefundReceiver, string(data.Owner)),
 			sdk.NewAttribute(AttributeKeyRefundValue, data.Id),
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
 		),

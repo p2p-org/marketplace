@@ -13,6 +13,7 @@ func InitGenesis(ctx sdk.Context, keeper Keeper, state types.GenesisState) {
 	if !keeper.IsBound(ctx, state.PortID) {
 		// transfer module binds to the transfer port on InitChain
 		// and claims the returned capability
+		fmt.Println("PORT BOUNDED!!!!!!!!!!", state.PortID)
 		err := keeper.BindPort(ctx, state.PortID)
 		if err != nil {
 			panic(fmt.Sprintf("could not claim port capability: %v", err))

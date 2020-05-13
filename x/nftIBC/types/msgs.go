@@ -8,7 +8,7 @@ import (
 
 // msg types
 const (
-	TypeMsgTransfer = "transfer"
+	TypeMsgTransfer = "transferNFT"
 )
 
 // NewMsgTransfer creates a new MsgTransfer instance

@@ -16,7 +16,7 @@ const (
 	Version = "ics20-1"
 
 	// Default PortID that transfer module binds to
-	PortID = "transferNFT"
+	PortID = "transfernft"
 
 	// StoreKey is the store key string for IBC transfer
 	StoreKey = ModuleName
