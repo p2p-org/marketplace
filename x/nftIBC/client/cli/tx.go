@@ -27,11 +27,11 @@ var (
 )
 
 // GetTransferTxCmd returns the command to create a NewMsgTransfer transaction
-func GetTransferTxCmd(cdc *codec.Codec) *cobra.Command {
+func GetTransferNFTTxCmd(cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "transfer [src-port] [src-channel] [dest-height] [receiver] [amount]",
-		Short: "Transfer fungible token through IBC",
-		Args:  cobra.ExactArgs(5),
+		Use:   "transferNFT [src-port] [src-channel] [dest-height] [receiver] [id] [denom]",
+		Short: "Transfer NFT through IBC",
+		Args:  cobra.ExactArgs(6),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := authtypes.NewTxBuilderFromCLI(inBuf).WithTxEncoder(authclient.GetTxEncoder(cdc))
@@ -45,13 +45,10 @@ func GetTransferTxCmd(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			// parse coin trying to be sent
-			coins, err := sdk.ParseCoins(args[4])
-			if err != nil {
-				return err
-			}
+			id := args[4]
+			denom := args[5]
 
-			msg := types.NewMsgTransfer(srcPort, srcChannel, uint64(destHeight), coins, sender, args[3])
+			msg := types.NewMsgTransferNFT(srcPort, srcChannel, uint64(destHeight), sender, args[3], id, denom)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}

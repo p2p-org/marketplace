@@ -253,12 +253,12 @@ func (am AppModule) OnRecvPacket(
 	if err := types.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal ICS-20 transfer packet data: %s", err.Error())
 	}
-	acknowledgement := FungibleTokenPacketAcknowledgement{
+	acknowledgement := NFTPacketAcknowledgement{
 		Success: true,
 		Error:   "",
 	}
 	if err := am.keeper.OnRecvPacket(ctx, packet, data); err != nil {
-		acknowledgement = FungibleTokenPacketAcknowledgement{
+		acknowledgement = NFTPacketAcknowledgement{
 			Success: false,
 			Error:   err.Error(),
 		}
@@ -273,7 +273,7 @@ func (am AppModule) OnRecvPacket(
 			EventTypePacket,
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
 			sdk.NewAttribute(AttributeKeyReceiver, data.Receiver),
-			sdk.NewAttribute(AttributeKeyValue, data.Amount.String()),
+			sdk.NewAttribute(AttributeKeyValue, data.Id),
 		),
 	)
 
@@ -287,7 +287,7 @@ func (am AppModule) OnAcknowledgementPacket(
 	packet channeltypes.Packet,
 	acknowledgement []byte,
 ) (*sdk.Result, error) {
-	var ack FungibleTokenPacketAcknowledgement
+	var ack NFTPacketAcknowledgement
 	if err := types.ModuleCdc.UnmarshalJSON(acknowledgement, &ack); err != nil {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal ICS-20 transfer packet acknowledgement: %v", err)
 	}
@@ -305,7 +305,7 @@ func (am AppModule) OnAcknowledgementPacket(
 			EventTypePacket,
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
 			sdk.NewAttribute(AttributeKeyReceiver, data.Receiver),
-			sdk.NewAttribute(AttributeKeyValue, data.Amount.String()),
+			sdk.NewAttribute(AttributeKeyValue, data.Id),
 			sdk.NewAttribute(AttributeKeyAckSuccess, fmt.Sprintf("%t", ack.Success)),
 		),
 	)
@@ -340,8 +340,8 @@ func (am AppModule) OnTimeoutPacket(
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			EventTypeTimeout,
-			sdk.NewAttribute(AttributeKeyRefundReceiver, data.Sender),
-			sdk.NewAttribute(AttributeKeyRefundValue, data.Amount.String()),
+			sdk.NewAttribute(AttributeKeyRefundReceiver, data.Owner),
+			sdk.NewAttribute(AttributeKeyRefundValue, data.Id),
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
 		),
 	)

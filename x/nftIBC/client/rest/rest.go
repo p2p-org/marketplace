@@ -4,7 +4,6 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/cosmos/cosmos-sdk/client/context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/rest"
 )
 
@@ -19,10 +18,10 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router) {
 	registerTxRoutes(cliCtx, r)
 }
 
-// TransferTxReq defines the properties of a transfer tx request's body.
-type TransferTxReq struct {
+type TransferNFTTxReq struct {
 	BaseReq    rest.BaseReq `json:"base_req" yaml:"base_req"`
 	DestHeight uint64       `json:"dest_height" yaml:"dest_height"`
-	Amount     sdk.Coins    `json:"amount" yaml:"amount"`
+	ID         string       `json:"id" yaml:"id"`
+	Denom      string       `json:"denom" yaml:"denom"`
 	Receiver   string       `json:"receiver" yaml:"receiver"`
 }

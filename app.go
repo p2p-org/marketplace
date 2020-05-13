@@ -22,6 +22,7 @@ import (
 	"github.com/corestario/marketplace/common"
 	"github.com/corestario/marketplace/x/marketplace"
 	"github.com/corestario/marketplace/x/marketplace/config"
+	transferNFT "github.com/corestario/marketplace/x/nftIBC"
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -76,17 +77,19 @@ var (
 
 		marketplace.AppModule{},
 		transfer.AppModuleBasic{},
+		transferNFT.AppModuleBasic{},
 	)
 
 	// module account permissions
 	maccPerms = map[string][]string{
-		auth.FeeCollectorName:           nil,
-		distr.ModuleName:                nil,
-		mint.ModuleName:                 {auth.Minter},
-		staking.BondedPoolName:          {auth.Burner, auth.Staking},
-		staking.NotBondedPoolName:       {auth.Burner, auth.Staking},
-		gov.ModuleName:                  {auth.Burner},
-		transfer.GetModuleAccountName(): {auth.Minter, auth.Burner},
+		auth.FeeCollectorName:              nil,
+		distr.ModuleName:                   nil,
+		mint.ModuleName:                    {auth.Minter},
+		staking.BondedPoolName:             {auth.Burner, auth.Staking},
+		staking.NotBondedPoolName:          {auth.Burner, auth.Staking},
+		gov.ModuleName:                     {auth.Burner},
+		transfer.GetModuleAccountName():    {auth.Minter, auth.Burner},
+		transferNFT.GetModuleAccountName(): {auth.Minter, auth.Burner},
 	}
 
 	// module accounts that are allowed to receive tokens
@@ -117,21 +120,22 @@ type marketplaceApp struct {
 	subspaces map[string]params.Subspace
 
 	// Keepers
-	accountKeeper    auth.AccountKeeper
-	bankKeeper       bank.Keeper
-	mintKeeper       mint.Keeper
-	stakingKeeper    staking.Keeper
-	crisisKeeper     crisis.Keeper
-	govKeeper        gov.Keeper
-	slashingKeeper   slashing.Keeper
-	distrKeeper      distr.Keeper
-	paramsKeeper     params.Keeper
-	nftKeeper        *nft.Keeper
-	ibcKeeper        *ibc.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
-	evidenceKeeper   evidence.Keeper
-	transferKeeper   transfer.Keeper
-	capabilityKeeper *capability.Keeper
-	upgradeKeeper    upgrade.Keeper
+	accountKeeper     auth.AccountKeeper
+	bankKeeper        bank.Keeper
+	mintKeeper        mint.Keeper
+	stakingKeeper     staking.Keeper
+	crisisKeeper      crisis.Keeper
+	govKeeper         gov.Keeper
+	slashingKeeper    slashing.Keeper
+	distrKeeper       distr.Keeper
+	paramsKeeper      params.Keeper
+	nftKeeper         *nft.Keeper
+	ibcKeeper         *ibc.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
+	evidenceKeeper    evidence.Keeper
+	transferKeeper    transfer.Keeper
+	transferNFTKeeper transferNFT.Keeper
+	capabilityKeeper  *capability.Keeper
+	upgradeKeeper     upgrade.Keeper
 
 	mpKeeper *marketplace.Keeper
 
@@ -163,7 +167,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		gov.StoreKey, params.StoreKey, ibc.StoreKey, upgrade.StoreKey,
 		evidence.StoreKey, transfer.StoreKey, capability.StoreKey,
 		nft.StoreKey, marketplace.StoreKey, marketplace.RegisterCurrencyKey, marketplace.AuctionKey,
-		marketplace.DeletedNFTKey,
+		marketplace.DeletedNFTKey, transferNFT.StoreKey,
 	)
 
 	tkeys := sdk.NewTransientStoreKeys(params.TStoreKey)
@@ -237,24 +241,6 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		staking.NewMultiStakingHooks(app.distrKeeper.Hooks(), app.slashingKeeper.Hooks()),
 	)
 
-	app.ibcKeeper = ibc.NewKeeper(
-		app.cdc, appCodec, keys[ibc.StoreKey], app.stakingKeeper, scopedIBCKeeper,
-	)
-
-	// Create Transfer Keepers
-	app.transferKeeper = transfer.NewKeeper(
-		appCodec, keys[transfer.StoreKey],
-		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
-		app.accountKeeper, app.bankKeeper,
-		scopedTransferKeeper,
-	)
-	transferModule := transfer.NewAppModule(app.transferKeeper)
-
-	// Create static IBC router, add transfer route, then set and seal it
-	ibcRouter := port.NewRouter()
-	ibcRouter.AddRoute(transfer.ModuleName, transferModule)
-	app.ibcKeeper.SetRouter(ibcRouter)
-
 	// The NFTKeeper is the Keeper from the module NFTs.
 	newKeeper := nft.NewKeeper(
 		app.cdc,
@@ -266,6 +252,10 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 
 	srvCfg := ReadSrvConfig()
 	fmt.Printf("Server Config: \n %+v \n", srvCfg)
+
+	app.ibcKeeper = ibc.NewKeeper(
+		app.cdc, appCodec, keys[ibc.StoreKey], app.stakingKeeper, scopedIBCKeeper,
+	)
 
 	app.mpKeeper = marketplace.NewKeeper(
 		app.bankKeeper,
@@ -283,6 +273,29 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		&app.accountKeeper,
 		app.ibcKeeper,
 	)
+
+	// Create Transfer Keepers
+	app.transferKeeper = transfer.NewKeeper(
+		appCodec, keys[transfer.StoreKey],
+		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
+		app.accountKeeper, app.bankKeeper,
+		scopedTransferKeeper,
+	)
+	transferModule := transfer.NewAppModule(app.transferKeeper)
+
+	app.transferNFTKeeper = transferNFT.NewKeeper(
+		appCodec, keys[transferNFT.StoreKey],
+		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
+		app.accountKeeper, app.bankKeeper,
+		scopedTransferKeeper, *app.mpKeeper, *app.nftKeeper,
+	)
+	transferNFTModule := transferNFT.NewAppModule(app.transferNFTKeeper)
+
+	// Create static IBC router, add transfer route, then set and seal it
+	ibcRouter := port.NewRouter()
+	ibcRouter.AddRoute(transfer.ModuleName, transferModule)
+	ibcRouter.AddRoute(transferNFT.ModuleName, transferNFTModule)
+	app.ibcKeeper.SetRouter(ibcRouter)
 
 	overriddenNFTModule := marketplace.NewNFTModuleMarketplace(nftModule, app.nftKeeper, app.mpKeeper)
 

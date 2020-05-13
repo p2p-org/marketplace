@@ -14,7 +14,7 @@ import (
 )
 
 func registerTxRoutes(cliCtx context.CLIContext, r *mux.Router) {
-	r.HandleFunc(fmt.Sprintf("/ibc/ports/{%s}/channels/{%s}/transfer", RestPortID, RestChannelID), transferHandlerFn(cliCtx)).Methods("POST")
+	r.HandleFunc(fmt.Sprintf("/ibc/ports/{%s}/channels/{%s}/transferNFT", RestPortID, RestChannelID), transferNFTHandlerFn(cliCtx)).Methods("POST")
 }
 
 // transferHandlerFn implements a transfer handler
@@ -30,13 +30,13 @@ func registerTxRoutes(cliCtx context.CLIContext, r *mux.Router) {
 // @Failure 400 {object} rest.ErrorResponse "Invalid port id or channel id"
 // @Failure 500 {object} rest.ErrorResponse "Internal Server Error"
 // @Router /ibc/ports/{port-id}/channels/{channel-id}/transfer [post]
-func transferHandlerFn(cliCtx context.CLIContext) http.HandlerFunc {
+func transferNFTHandlerFn(cliCtx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		portID := vars[RestPortID]
 		channelID := vars[RestChannelID]
 
-		var req TransferTxReq
+		var req TransferNFTTxReq
 		if !rest.ReadRESTReq(w, r, cliCtx.Codec, &req) {
 			return
 		}
@@ -53,13 +53,14 @@ func transferHandlerFn(cliCtx context.CLIContext) http.HandlerFunc {
 		}
 
 		// create the message
-		msg := types.NewMsgTransfer(
+		msg := types.NewMsgTransferNFT(
 			portID,
 			channelID,
 			req.DestHeight,
-			req.Amount,
 			fromAddr,
 			req.Receiver,
+			req.ID,
+			req.Denom,
 		)
 
 		if err := msg.ValidateBasic(); err != nil {

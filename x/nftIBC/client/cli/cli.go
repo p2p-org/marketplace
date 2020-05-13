@@ -10,8 +10,8 @@ import (
 // GetQueryCmd returns the query commands for IBC fungible token transfer
 func GetQueryCmd(cdc *codec.Codec, queryRoute string) *cobra.Command {
 	ics20TransferQueryCmd := &cobra.Command{
-		Use:   "transfer",
-		Short: "IBC fungible token transfer query subcommands",
+		Use:   "transferNFT",
+		Short: "IBC NFT transfer query subcommands",
 	}
 
 	ics20TransferQueryCmd.AddCommand(flags.GetCommands(
@@ -24,12 +24,12 @@ func GetQueryCmd(cdc *codec.Codec, queryRoute string) *cobra.Command {
 // GetTxCmd returns the transaction commands for IBC fungible token transfer
 func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 	ics20TransferTxCmd := &cobra.Command{
-		Use:   "transfer",
-		Short: "IBC fungible token transfer transaction subcommands",
+		Use:   "transferNFT",
+		Short: "IBC NFT transfer transaction subcommands",
 	}
 
 	ics20TransferTxCmd.AddCommand(flags.PostCommands(
-		GetTransferTxCmd(cdc),
+		GetTransferNFTTxCmd(cdc),
 	)...)
 
 	return ics20TransferTxCmd

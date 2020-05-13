@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"github.com/corestario/marketplace/x/marketplace"
+	"github.com/cosmos/modules/incubator/nft"
 	"strings"
 
 	"github.com/corestario/marketplace/x/nftIBC/types"
@@ -75,55 +77,30 @@ func (k Keeper) createOutgoingPacket(
 	source := strings.HasPrefix(denom, prefix)
 
 	if source {
-		// clear the denomination from the prefix to send the coins to the escrow account
-		nft, err := k.mpKeeper.GetNFT(ctx, id)
-		if err != nil {
-			return err
-		}
-		baseNFT, err := k.nftKeeper.GetNFT(ctx, denom, id)
-		if err != nil {
-			return err
-		}
 
 		// escrow tokens if the destination chain is the same as the sender's
 		escrowAddress := types.GetEscrowAddress(sourcePort, sourceChannel)
 
-		// escrow source tokens. It fails if balance insufficient.
-		if err := k.bankKeeper.SendCoins(
-			ctx, sender, escrowAddress, coins,
-		); err != nil {
+		msgTransferNFT := nft.NewMsgTransferNFT(sender, escrowAddress, denom, id)
+
+		_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
+		if err != nil {
 			return err
 		}
 
 	} else {
 		// build the receiving denomination prefix if it's not present
 		prefix = types.GetDenomPrefix(sourcePort, sourceChannel)
-		for _, coin := range amount {
-			if !strings.HasPrefix(coin.Denom, prefix) {
-				return sdkerrors.Wrapf(types.ErrInvalidDenomForTransfer, "denom was: %s", coin.Denom)
-			}
-		}
 
-		// transfer the coins to the module account and burn them
-		if err := k.bankKeeper.SendCoinsFromAccountToModule(
-			ctx, sender, types.GetModuleAccountName(), amount,
-		); err != nil {
-			return err
-		}
+		msgBurnNFT := nft.NewMsgBurnNFT(sender, id, denom)
 
-		// burn vouchers from the sender's balance if the source is from another chain
-		if err := k.bankKeeper.BurnCoins(
-			ctx, types.GetModuleAccountName(), amount,
-		); err != nil {
-			// NOTE: should not happen as the module account was
-			// retrieved on the step above and it has enough balace
-			// to burn.
+		if _, err := marketplace.HandleMsgBurnNFTMarketplace(ctx, msgBurnNFT, &k.nftKeeper, &k.mpKeeper); err != nil {
 			return err
 		}
 	}
 
 	packetData := types.NewNFTPacketData(
-		amount, sender.String(), receiver,
+		id, denom, sender,
 	)
 
 	packet := channeltypes.NewPacket(
@@ -143,53 +120,28 @@ func (k Keeper) createOutgoingPacket(
 func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet, data types.NFTPacketData) error {
 	// NOTE: packet data type already checked in handler.go
 
-	if len(data.Amount) != 1 {
-		return sdkerrors.Wrapf(types.ErrOnlyOneDenomAllowed, "%d denoms included", len(data.Amount))
-	}
-
 	prefix := types.GetDenomPrefix(packet.GetDestPort(), packet.GetDestChannel())
-	source := strings.HasPrefix(data.Amount[0].Denom, prefix)
-
-	// decode the receiver address
-	receiver, err := sdk.AccAddressFromBech32(data.Receiver)
-	if err != nil {
-		return err
-	}
+	source := strings.HasPrefix(data.Denom, prefix)
 
 	if source {
-
-		// mint new tokens if the source of the transfer is the same chain
-		if err := k.bankKeeper.MintCoins(
-			ctx, types.GetModuleAccountName(), data.Amount,
-		); err != nil {
+		mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Receiver, data.Id, data.Id, data.TokenMetadataURI)
+		if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
 			return err
 		}
-
-		// send to receiver
-		return k.bankKeeper.SendCoinsFromModuleToAccount(
-			ctx, types.GetModuleAccountName(), receiver, data.Amount,
-		)
 	}
 
 	// check the denom prefix
 	prefix = types.GetDenomPrefix(packet.GetSourcePort(), packet.GetSourceChannel())
-	coins := make(sdk.Coins, len(data.Amount))
-	for i, coin := range data.Amount {
-		if !strings.HasPrefix(coin.Denom, prefix) {
-			return sdkerrors.Wrapf(
-				sdkerrors.ErrInvalidCoins,
-				"%s doesn't contain the prefix '%s'", coin.Denom, prefix,
-			)
-		}
-		coins[i] = sdk.NewCoin(coin.Denom[len(prefix):], coin.Amount)
-	}
 
 	// unescrow tokens
 	escrowAddress := types.GetEscrowAddress(packet.GetDestPort(), packet.GetDestChannel())
-	return k.bankKeeper.SendCoins(ctx, escrowAddress, receiver, coins)
+
+	msgTransferNFT := nft.NewMsgTransferNFT(escrowAddress, data.Receiver, data.Denom, data.Id)
+	_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
+	return err
 }
 
-func (k Keeper) OnAcknowledgementPacket(ctx sdk.Context, packet channeltypes.Packet, data types.NFTPacketData, ack types.FungibleTokenPacketAcknowledgement) error {
+func (k Keeper) OnAcknowledgementPacket(ctx sdk.Context, packet channeltypes.Packet, data types.NFTPacketData, ack types.NFTPacketAcknowledgement) error {
 	if !ack.Success {
 		return k.refundPacketAmount(ctx, packet, data)
 	}
@@ -203,41 +155,24 @@ func (k Keeper) OnTimeoutPacket(ctx sdk.Context, packet channeltypes.Packet, dat
 func (k Keeper) refundPacketAmount(ctx sdk.Context, packet channeltypes.Packet, data types.NFTPacketData) error {
 	// NOTE: packet data type already checked in handler.go
 
-	if len(data.Amount) != 1 {
-		return sdkerrors.Wrapf(types.ErrOnlyOneDenomAllowed, "%d denoms included", len(data.Amount))
-	}
-
 	// check the denom prefix
 	prefix := types.GetDenomPrefix(packet.GetDestPort(), packet.GetDestChannel())
-	source := strings.HasPrefix(data.Amount[0].Denom, prefix)
-
-	// decode the sender address
-	sender, err := sdk.AccAddressFromBech32(data.Sender)
-	if err != nil {
-		return err
-	}
+	source := strings.HasPrefix(data.Denom, prefix)
 
 	if source {
-		coins := make(sdk.Coins, len(data.Amount))
-		for i, coin := range data.Amount {
-			coin := coin
-			if !strings.HasPrefix(coin.Denom, prefix) {
-				return sdkerrors.Wrapf(sdkerrors.ErrInvalidCoins, "%s doesn't contain the prefix '%s'", coin.Denom, prefix)
-			}
-			coins[i] = sdk.NewCoin(coin.Denom[len(prefix):], coin.Amount)
-		}
 
 		// unescrow tokens back to sender
 		escrowAddress := types.GetEscrowAddress(packet.GetSourcePort(), packet.GetSourceChannel())
-		return k.bankKeeper.SendCoins(ctx, escrowAddress, sender, coins)
-	}
 
-	// mint vouchers back to sender
-	if err := k.bankKeeper.MintCoins(
-		ctx, types.GetModuleAccountName(), data.Amount,
-	); err != nil {
+		msgTransferNFT := nft.NewMsgTransferNFT(escrowAddress, data.Owner, data.Denom, data.Id)
+		_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
 		return err
 	}
 
-	return k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.GetModuleAccountName(), sender, data.Amount)
+	// mint vouchers back to sender
+	mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Owner, data.Id, data.Id, data.TokenMetadataURI)
+	if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
+		return err
+	}
+	return nil
 }
