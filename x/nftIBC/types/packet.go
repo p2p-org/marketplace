@@ -26,7 +26,7 @@ func (ftpd *NFTPacketData) ValidateBasic() error {
 }
 
 // GetBytes is a helper for serialising
-func (ftpd *NFTPacketData) GetBytes() []byte {
+func (ftpd NFTPacketData) GetBytes() []byte {
 	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(ftpd))
 }
 
