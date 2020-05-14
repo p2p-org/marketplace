@@ -22,7 +22,10 @@ rly lite init ibc1 -f
 rly tx link demo
 
 
-mpcli tx nft mint name 9E1FAAD1-BA51-4ED9-A0DB-00D096F807DD $(mpcli keys show n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test -a) --tokenURI someTOKENURI --from n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test
+TOKEN_ID=9E1FAAD1-BA51-4ED9-A0DB-00D096F807DD
+DENOM=denom
+
+mpcli tx nft mint $DENOM $TOKEN_ID $(mpcli keys show n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test -a) --tokenURI someTOKENURI --from n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test
 
 sleep 5
 
@@ -32,7 +35,7 @@ mpcli q marketplace nfts --home scripts/data/ibc0/n0/gaiacli/
 
 echo "----------------------------"
 echo "Transfering NFT to ibc1...\n"
-rly tx transferNFT ibc0 ibc1 9E1FAAD1-BA51-4ED9-A0DB-00D096F807DD name true $(rly ch addr ibc1)
+rly tx transferNFT ibc0 ibc1 $TOKEN_ID $DENOM true $(rly ch addr ibc1)
 
 echo "----------------------------"
 echo "Transferred NFT on ibc0 (owned by escrow account)"
