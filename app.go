@@ -289,7 +289,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		appCodec, keys[transferNFT.StoreKey],
 		app.ibcKeeper.ChannelKeeper, &app.ibcKeeper.PortKeeper,
 		app.accountKeeper, app.bankKeeper,
-		scopedTransferNFTKeeper, *app.mpKeeper, *app.nftKeeper,
+		scopedTransferNFTKeeper, app.mpKeeper, app.nftKeeper,
 	)
 	transferNFTModule := transferNFT.NewAppModule(app.transferNFTKeeper)
 

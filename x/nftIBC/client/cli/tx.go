@@ -48,7 +48,12 @@ func GetTransferNFTTxCmd(cdc *codec.Codec) *cobra.Command {
 			id := args[4]
 			denom := args[5]
 
-			msg := types.NewMsgTransferNFT(srcPort, srcChannel, uint64(destHeight), sender, args[3], id, denom)
+			receiver, err := sdk.AccAddressFromBech32(args[3])
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgTransferNFT(srcPort, srcChannel, uint64(destHeight), sender, receiver, id, denom)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}

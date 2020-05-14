@@ -52,13 +52,19 @@ func transferNFTHandlerFn(cliCtx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
+		receiver, err := sdk.AccAddressFromBech32(req.Receiver)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		// create the message
 		msg := types.NewMsgTransferNFT(
 			portID,
 			channelID,
 			req.DestHeight,
 			fromAddr,
-			req.Receiver,
+			receiver,
 			req.ID,
 			req.Denom,
 		)

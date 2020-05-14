@@ -25,7 +25,9 @@ message MsgTransferNFT {
   (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
   ];
   // the recipient address on the destination chain
-  string receiver = 7;
+  bytes receiver = 7 [
+    (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"
+  ];
 }
 
 

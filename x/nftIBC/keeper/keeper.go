@@ -39,8 +39,8 @@ type Keeper struct {
 	authKeeper    types.AccountKeeper
 	bankKeeper    types.BankKeeper
 	scopedKeeper  capability.ScopedKeeper
-	mpKeeper      marketplace.Keeper
-	nftKeeper     nft.Keeper
+	mpKeeper      *marketplace.Keeper
+	nftKeeper     *nft.Keeper
 }
 
 // NewKeeper creates a new IBC transfer Keeper instance
@@ -48,7 +48,7 @@ func NewKeeper(
 	cdc codec.Marshaler, key sdk.StoreKey,
 	channelKeeper types.ChannelKeeper, portKeeper types.PortKeeper,
 	authKeeper types.AccountKeeper, bankKeeper types.BankKeeper, scopedKeeper capability.ScopedKeeper,
-	mpKeeper marketplace.Keeper, nftKeeper nft.Keeper,
+	mpKeeper *marketplace.Keeper, nftKeeper *nft.Keeper,
 ) Keeper {
 
 	// ensure ibc transfer module account is set

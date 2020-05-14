@@ -6,11 +6,13 @@ import (
 )
 
 func NewNFTPacketData(
-	id string, denom string, owner sdk.AccAddress) NFTPacketData {
+	id string, denom string, owner, receiver sdk.AccAddress, tokenURI string) NFTPacketData {
 	return NFTPacketData{
-		Id:    id,
-		Denom: denom,
-		Owner: owner,
+		Id:       id,
+		Denom:    denom,
+		Owner:    owner,
+		Receiver: receiver,
+		TokenURI: tokenURI,
 	}
 }
 

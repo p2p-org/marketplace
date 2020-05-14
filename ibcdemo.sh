@@ -19,22 +19,30 @@ rly lite init ibc0 -f
 rly lite init ibc1 -f
 
 # Now you can connect the two chains with one command:
-rly tx link demo --debug
+rly tx link demo
 
-# Check the token balances on both chains
-#rly q balance ibc0
-#rly q bal ibc1
-#
-## Then send some tokens between the chains
-#rly tx transfer ibc0 ibc1 10000n0token true $(rly keys show ibc1 testkey)
-#
-## See that the transfer has completed
-#rly q bal ibc0
-#rly q bal ibc1
-#
-## Send the tokens back to the account on ibc0
-#rly tx xfer ibc1 ibc0 10000n0token false $(rly keys show ibc0 testkey)
-#
-## See that the return trip has completed
-#rly q bal ibc0
-#rly q bal ibc1
+
+mpcli tx nft mint name 9E1FAAD1-BA51-4ED9-A0DB-00D096F807DD $(mpcli keys show n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test -a) --tokenURI someTOKENURI --from n0 --home scripts/data/ibc0/n0/gaiacli/ --keyring-backend test
+
+sleep 5
+
+echo "----------------------------"
+echo "Minted NFT on ibc0"
+mpcli q marketplace nfts --home scripts/data/ibc0/n0/gaiacli/
+
+echo "----------------------------"
+echo "Transfering NFT to ibc1...\n"
+rly tx transferNFT ibc0 ibc1 9E1FAAD1-BA51-4ED9-A0DB-00D096F807DD name true $(rly ch addr ibc1)
+
+echo "----------------------------"
+echo "Transferred NFT on ibc0 (owned by escrow account)"
+mpcli q marketplace nfts --home scripts/data/ibc0/n0/gaiacli/
+
+sleep 5
+echo "----------------------------"
+echo "Relaying packet"
+rly tx relay demo
+
+echo "----------------------------"
+echo "Relayed NFT on ibc1"
+mpcli q marketplace nfts --home scripts/data/ibc1/n0/gaiacli/

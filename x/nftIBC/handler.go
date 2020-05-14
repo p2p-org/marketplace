@@ -30,8 +30,8 @@ func handleMsgTransferNFT(ctx sdk.Context, k Keeper, msg MsgTransferNFT) (*sdk.R
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
 			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, string(msg.Sender)),
-			sdk.NewAttribute(AttributeKeyReceiver, msg.Receiver),
+			sdk.NewAttribute(sdk.AttributeKeySender, sdk.AccAddress(msg.Sender).String()),
+			sdk.NewAttribute(AttributeKeyReceiver, sdk.AccAddress(msg.Receiver).String()),
 		),
 	)
 

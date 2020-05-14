@@ -30,7 +30,7 @@ func (k Keeper) SendTransfer(
 	id string,
 	denom string,
 	sender sdk.AccAddress,
-	receiver string,
+	receiver sdk.AccAddress,
 ) error {
 	sourceChannelEnd, found := k.channelKeeper.GetChannel(ctx, sourcePort, sourceChannel)
 	if !found {
@@ -59,7 +59,7 @@ func (k Keeper) createOutgoingPacket(
 	id string,
 	denom string,
 	sender sdk.AccAddress,
-	receiver string,
+	receiver sdk.AccAddress,
 ) error {
 	channelCap, ok := k.scopedKeeper.GetCapability(ctx, ibctypes.ChannelCapabilityPath(sourcePort, sourceChannel))
 	if !ok {
@@ -76,15 +76,28 @@ func (k Keeper) createOutgoingPacket(
 	prefix := types.GetDenomPrefix(destinationPort, destinationChannel)
 	source := strings.HasPrefix(denom, prefix)
 
+	tokenURI := ""
+
 	if source {
+
+		tempDenom := denom
+
+		if strings.HasPrefix(denom, prefix) {
+			tempDenom = denom[len(prefix):]
+		}
+
+		token, err := k.nftKeeper.GetNFT(ctx, tempDenom, id)
+		if err != nil {
+			return err
+		}
+		tokenURI = token.GetTokenURI()
 
 		// escrow tokens if the destination chain is the same as the sender's
 		escrowAddress := types.GetEscrowAddress(sourcePort, sourceChannel)
 
-		msgTransferNFT := nft.NewMsgTransferNFT(sender, escrowAddress, denom, id)
+		msgTransferNFT := nft.NewMsgTransferNFT(sender, escrowAddress, tempDenom, id)
 
-		_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
-		if err != nil {
+		if _, err = marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, k.nftKeeper, k.mpKeeper); err != nil {
 			return err
 		}
 
@@ -92,15 +105,25 @@ func (k Keeper) createOutgoingPacket(
 		// build the receiving denomination prefix if it's not present
 		prefix = types.GetDenomPrefix(sourcePort, sourceChannel)
 
+		if !strings.HasPrefix(denom, prefix) {
+			return sdkerrors.Wrapf(types.ErrInvalidDenomForTransfer, "denom was: %s", denom)
+		}
+
+		token, err := k.nftKeeper.GetNFT(ctx, denom, id)
+		if err != nil {
+			return err
+		}
+		tokenURI = token.GetTokenURI()
+
 		msgBurnNFT := nft.NewMsgBurnNFT(sender, id, denom)
 
-		if _, err := marketplace.HandleMsgBurnNFTMarketplace(ctx, msgBurnNFT, &k.nftKeeper, &k.mpKeeper); err != nil {
+		if _, err := marketplace.HandleMsgBurnNFTMarketplace(ctx, msgBurnNFT, k.nftKeeper, k.mpKeeper); err != nil {
 			return err
 		}
 	}
 
 	packetData := types.NewNFTPacketData(
-		id, denom, sender,
+		id, denom, sender, receiver, tokenURI,
 	)
 
 	packet := channeltypes.NewPacket(
@@ -124,20 +147,30 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet, data t
 	source := strings.HasPrefix(data.Denom, prefix)
 
 	if source {
-		mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Receiver, data.Id, data.Id, data.TokenURI)
-		if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
+		mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Receiver, data.Id, data.Denom, data.TokenURI)
+		if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k.mpKeeper); err != nil {
 			return err
 		}
+		return nil
 	}
 
 	// check the denom prefix
 	prefix = types.GetDenomPrefix(packet.GetSourcePort(), packet.GetSourceChannel())
 
+	if !strings.HasPrefix(data.Denom, prefix) {
+		return sdkerrors.Wrapf(
+			sdkerrors.ErrInvalidCoins,
+			"%s doesn't contain the prefix '%s'", data.Denom, prefix,
+		)
+	}
+
+	data.Denom = data.Denom[len(prefix):]
+
 	// unescrow tokens
 	escrowAddress := types.GetEscrowAddress(packet.GetDestPort(), packet.GetDestChannel())
 
 	msgTransferNFT := nft.NewMsgTransferNFT(escrowAddress, data.Receiver, data.Denom, data.Id)
-	_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
+	_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, k.nftKeeper, k.mpKeeper)
 	return err
 }
 
@@ -161,17 +194,22 @@ func (k Keeper) refundPacketAmount(ctx sdk.Context, packet channeltypes.Packet, 
 
 	if source {
 
+		if !strings.HasPrefix(data.Denom, prefix) {
+			return sdkerrors.Wrapf(sdkerrors.ErrInvalidCoins, "%s doesn't contain the prefix '%s'", data.Denom, prefix)
+		}
+		data.Denom = data.Denom[len(prefix):]
+
 		// unescrow tokens back to sender
 		escrowAddress := types.GetEscrowAddress(packet.GetSourcePort(), packet.GetSourceChannel())
 
 		msgTransferNFT := nft.NewMsgTransferNFT(escrowAddress, data.Owner, data.Denom, data.Id)
-		_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, &k.nftKeeper, &k.mpKeeper)
+		_, err := marketplace.HandleMsgTransferNFTMarketplace(ctx, msgTransferNFT, k.nftKeeper, k.mpKeeper)
 		return err
 	}
 
 	// mint vouchers back to sender
 	mintNFTMsg := nft.NewMsgMintNFT(data.Owner, data.Owner, data.Id, data.Id, data.TokenURI)
-	if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, &k.nftKeeper, &k.mpKeeper); err != nil {
+	if _, err := marketplace.HandleMsgMintNFTMarketplace(ctx, mintNFTMsg, k.nftKeeper, k.mpKeeper); err != nil {
 		return err
 	}
 	return nil

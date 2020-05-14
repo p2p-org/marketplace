@@ -13,7 +13,7 @@ const (
 
 // NewMsgTransfer creates a new MsgTransfer instance
 func NewMsgTransferNFT(
-	sourcePort, sourceChannel string, destHeight uint64, sender sdk.AccAddress, receiver string, id, denom string,
+	sourcePort, sourceChannel string, destHeight uint64, sender, receiver sdk.AccAddress, id, denom string,
 ) MsgTransferNFT {
 	return MsgTransferNFT{
 		SourcePort:        sourcePort,
@@ -47,7 +47,7 @@ func (msg MsgTransferNFT) ValidateBasic() error {
 	if msg.Sender == nil {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "missing sender address")
 	}
-	if msg.Receiver == "" {
+	if msg.Receiver == nil {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "missing recipient address")
 	}
 	return nil

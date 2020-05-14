@@ -117,11 +117,11 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
   mpd init node0 --chain-id mpchain
 
   echo "Adding genesis accounts..."
-  mpcli keys add user1 -i <<< $PSW < data_u1.txt
-  mpcli keys add user2 -i <<< $PSW < data_u2.txt
-  mpcli keys add sellerBeneficiary -i <<< $PSW < data_sb.txt
-  mpcli keys add buyerBeneficiary -i <<< $PSW < data_bb.txt
-  mpcli keys add dgaming -i <<< $PSW < data_dg.txt
+  mpcli keys add user1 -i < data_u1.txt <<< $PSW
+  mpcli keys add user2 -i data_u2.txt <<< $PSW
+  mpcli keys add sellerBeneficiary -i < data_sb.txt <<< $PSW
+  mpcli keys add buyerBeneficiary -i < data_bb.txt <<< $PSW
+  mpcli keys add dgaming -i < data_dg.txt <<< $PSW
 
   mpd add-genesis-account $(mpcli keys show user1 -a) 999999token,100000000stake
   mpd add-genesis-account $(mpcli keys show user2 -a) 999999token,100000000stake
