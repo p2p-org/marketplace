@@ -12,7 +12,7 @@ mpcli tx nft mint name $uu $user1_id --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 
-nft_id=$(mpcli query marketplace nft $uu | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
+nft_id=$(mpcli query marketplace nft $uu | ggrep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
 
 if [[ $uu != $nft_id ]]
 then
@@ -27,7 +27,7 @@ mpcli tx nft transfer $user1_id $(mpcli keys show user2 -a) name $nft_id --from 
 
 sleep $sleep_time
 
-new_owner_id=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
+new_owner_id=$(mpcli query marketplace nft $nft_id | ggrep -oP '(?<=\"owner\": \")(.*)(?=\".*)' -m 1)
 u2_id=$(mpcli keys show user2 -a)
 
 if [[ $new_owner_id != $u2_id ]]

@@ -7,6 +7,7 @@
 package types
 
 import (
+	github_com_cosmos_cosmos_sdk_types "github.com/cosmos/cosmos-sdk/types"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -40,9 +41,9 @@ type MsgTransferNFT struct {
 	Id                string `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
 	Denom             string `protobuf:"bytes,5,opt,name=denom,proto3" json:"denom,omitempty"`
 	// the sender address
-	Sender []byte `protobuf:"bytes,6,opt,name=sender,proto3" json:"sender,omitempty"`
+	Sender github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,6,opt,name=sender,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"sender,omitempty"`
 	// the recipient address on the destination chain
-	Receiver []byte `protobuf:"bytes,7,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	Receiver github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,7,opt,name=receiver,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"receiver,omitempty"`
 }
 
 func (x *MsgTransferNFT) Reset() {
@@ -112,14 +113,14 @@ func (x *MsgTransferNFT) GetDenom() string {
 	return ""
 }
 
-func (x *MsgTransferNFT) GetSender() []byte {
+func (x *MsgTransferNFT) GetSender() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if x != nil {
 		return x.Sender
 	}
 	return nil
 }
 
-func (x *MsgTransferNFT) GetReceiver() []byte {
+func (x *MsgTransferNFT) GetReceiver() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if x != nil {
 		return x.Receiver
 	}
@@ -131,11 +132,11 @@ type NFTPacketData struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Denom    string `protobuf:"bytes,2,opt,name=denom,proto3" json:"denom,omitempty"`
-	Owner    []byte `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
-	Receiver []byte `protobuf:"bytes,4,opt,name=receiver,proto3" json:"receiver,omitempty"`
-	TokenURI string `protobuf:"bytes,5,opt,name=tokenURI,proto3" json:"tokenURI,omitempty"`
+	Id       string                                        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Denom    string                                        `protobuf:"bytes,2,opt,name=denom,proto3" json:"denom,omitempty"`
+	Owner    github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,3,opt,name=owner,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"owner,omitempty"`
+	Receiver github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,4,opt,name=receiver,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"receiver,omitempty"`
+	TokenURI string                                        `protobuf:"bytes,5,opt,name=tokenURI,proto3" json:"tokenURI,omitempty"`
 }
 
 func (x *NFTPacketData) Reset() {
@@ -184,14 +185,14 @@ func (x *NFTPacketData) GetDenom() string {
 	return ""
 }
 
-func (x *NFTPacketData) GetOwner() []byte {
+func (x *NFTPacketData) GetOwner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if x != nil {
 		return x.Owner
 	}
 	return nil
 }
 
-func (x *NFTPacketData) GetReceiver() []byte {
+func (x *NFTPacketData) GetReceiver() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if x != nil {
 		return x.Receiver
 	}
