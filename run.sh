@@ -1,6 +1,6 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
-account_num=${ACC_CNT:-200}
+account_num=${ACC_CNT:-5}
 money_count="100000token"
 file_output=${ACC_OUT_FILE:-"out.txt"}
 file_input=${ACC_IN_FILE:-""}
@@ -115,19 +115,22 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
 
   echo "Initialization..."
   mpd init node0 --chain-id mpchain
+  mpcli config keyring-backend test
 
   echo "Adding genesis accounts..."
-  mpcli keys add user1 -i < data_u1.txt <<< $PSW
-  mpcli keys add user2 -i data_u2.txt <<< $PSW
-  mpcli keys add sellerBeneficiary -i < data_sb.txt <<< $PSW
-  mpcli keys add buyerBeneficiary -i < data_bb.txt <<< $PSW
-  mpcli keys add dgaming -i < data_dg.txt <<< $PSW
+  mpcli keys add user1 -i < data_u1.txt
+  mpcli keys add user2 -i < data_u2.txt
+  mpcli keys add user3 -i < data_u3.txt
+  mpcli keys add sellerBeneficiary -i < data_sb.txt
+  mpcli keys add buyerBeneficiary -i < data_bb.txt
+  mpcli keys add relay -i < data_dg.txt
 
   mpd add-genesis-account $(mpcli keys show user1 -a) 999999token,100000000stake
   mpd add-genesis-account $(mpcli keys show user2 -a) 999999token,100000000stake
-  mpd add-genesis-account $(mpcli keys show sellerBeneficiary -a) 1000token,100000000stake
-  mpd add-genesis-account $(mpcli keys show buyerBeneficiary -a) 1000token,100000000stake
-  mpd add-genesis-account $(mpcli keys show dgaming -a) 1000token,100000000stake
+  mpd add-genesis-account $(mpcli keys show user3 -a) 999999token,100000000stake
+  mpd add-genesis-account $(mpcli keys show sellerBeneficiary -a) 100000000stake
+  mpd add-genesis-account $(mpcli keys show buyerBeneficiary -a) 100000000stake
+  mpd add-genesis-account $(mpcli keys show relay -a) 100000000stake
 
   if [[ $DEMO ]]; then
     if [[ -e $file_input ]]; then
@@ -136,8 +139,13 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
       while read -r line; do
         echo $line > tmp.txt
         echo "" >> tmp.txt
-        mpcli keys add demo$i -i <<< $PSW < tmp.txt
-        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
+#        echo $PSW >> tmp.txt
+#        echo $PSW >> tmp.txt
+#        echo "" >> tmp.txt
+
+        echo "gen user demo${i}"
+        mpcli keys add demo$i -i < tmp.txt
+        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count --keyring-backend test
         i=$((i+1))
       done < $file_input
       rm tmp.txt
@@ -146,9 +154,9 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
       echo "generate mnemonics"
       for ((i=1;i<=$account_num;i++));
       do
-        mnemonic=$(mpcli keys add demo$i <<< $PSW |& tail -1)
-        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count,${stake_count}stake
-        echo "demo$i      $pwd        $money_count   ${stake_count}stake       $mnemonic" >> $file_output
+        mnemonic=$(mpcli keys add demo$i |& tail -1)
+        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count --keyring-backend test
+        echo "demo$i      $pwd        $money_count       $mnemonic" >> $file_output
       done
     fi
   fi
@@ -159,13 +167,13 @@ if [ ! -f ~/.mpd/config/config.toml ]; then
   mpcli config indent true
   mpcli config trust-node true
 
-  mpd gentx --name user1 <<< $PSW
+  mpd gentx --name user1 --keyring-backend test
   mpd collect-gentxs
   mpd validate-genesis
 fi
 
 if [[ -z $NORUN ]]; then
   echo "Starting node..."
-  mpcli rest-server --chain-id mpchain --trust-node --laddr tcp://0.0.0.0:1317 > /dev/null &
+  #mpcli rest-server --chain-id mpchain --trust-node --laddr tcp://0.0.0.0:1317 > /dev/null &
   mpd start #&> mplog.log
 fi
