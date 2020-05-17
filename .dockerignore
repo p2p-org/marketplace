@@ -2,8 +2,6 @@
 .DS_Store
 *.swp
 *.swo
-.vscode
-.idea
 
 # Build
 vendor
@@ -11,5 +9,14 @@ vendor
 build
 
 # IDE
-.idea/
+.vscode
+.idea
 *.iml
+.github
+.git
+.cache
+*.md
+
+*.log
+
+/data

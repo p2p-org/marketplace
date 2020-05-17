@@ -1,96 +1,48 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-account_num=${ACC_CNT:-5}
-money_count="100000token"
-file_output=${ACC_OUT_FILE:-"out.txt"}
-file_input=${ACC_IN_FILE:-""}
-stake_count=100000000
-PSW="12345678"
+DATA_DIR=${DATA_DIR:-"data"}
+CHAIN_ID=${CHAIN_ID:-"mpchain"}
+RPC_HOST=${RPC_HOST:-"localhost"}
+P2P_PORT=${P2P_PORT:-"26656"}
+RPC_PORT=${RPC_PORT:-"26657"}
+PROXY_PORT=${PROXY_PORT:-"26658"}
+LCD_PORT=${LCD_PORT:-"1317"}
+
+MP_DATA="$DATA_DIR/$CHAIN_ID"
+
+gclpth="n0/gaiacli"
+gdpth="n0/gaiad"
+gclhome="$MP_DATA/$gclpth"
+gdhome="$MP_DATA/$gdpth"
+cfgpth="$gdhome/config/config.toml"
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      echo "run marketplace node"
+      echo "run relayer"
       echo " "
-      echo "run.sh [options]"
+      echo "relay.sh [options]"
       echo " "
       echo "options:"
-      echo "-h, --help                show brief help"
-      echo "--build                   manual rebuild marketplace (not for docker)"
-      echo "--reset                   force reset blockchain state (clear all data)"
-      echo "--demo                    add demo accounts (used only with --reset)"
-      echo "--input_mnemonic          specify mnemonics file"
-      echo "-n, --num_account=n       specify number of demo accounts | 200 default"
-      echo "-m, --money=m             specify token amount for demo account | 100000token default"
-      echo "-s, --stake=s             specify stake amount for demo account | 100000000 default"
-      echo "-o, --output_file=o       specify output file | out.txt default"
-      echo "--norun                   omit service start"
+      echo "--init                   force reset blockchain state (clear all data)"
+      echo "--norun                  omit service start"
+      echo "--rest                   start rest server"
       exit 0
       ;;
-    -n|--num_account)
-      shift
-      if test $# -gt 0; then
-        account_num=$1
-      else
-        echo "no number of accounts specified"
-        exit 1
-      fi
+    --init)
+      INIT=true
       shift
       ;;
-    -m|--money)
-      shift
-      if test $# -gt 0; then
-        money_count=$1
-      else
-        echo "no money amount specified"
-        exit 1
-      fi
-      shift
-      ;;
-    -s|--stake)
-      shift
-      if test $# -gt 0; then
-        stake_count=$1
-      else
-        echo "no money amount specified"
-        exit 1
-      fi
-      shift
-      ;;
-    -o|--output_file)
-      shift
-      if test $# -gt 0; then
-        file_output=$1
-      else
-        echo "no output_file specified"
-        exit 1
-      fi
-      shift
-      ;;
-    --build)
-      BUILD=true
-      shift
-      ;;
-    --demo)
-      DEMO=true
-      shift
-      ;;
-    --reset)
-      RESET=true
+    --rest)
+      REST=true
       shift
       ;;
     --norun)
       NORUN=true
       shift
       ;;
-    --input_mnemonic)
-      shift
-      if test $# -gt 0; then
-        file_input=$1
-      else
-        echo "no mnemonic_file specified"
-        exit 1
-      fi
+    --norun)
+      NORUN=true
       shift
       ;;
     *)
@@ -99,81 +51,83 @@ while test $# -gt 0; do
   esac
 done
 
-if [[ $BUILD ]]; then
-  echo "Building..."
-  make install
+if [[ $INIT ]]; then
+  echo "Clearing data..."
+  rm -rf $MP_DATA &> /dev/null
 fi
 
-if [[ $RESET ]]; then
-  echo "Clearing previous files..."
-  rm -rf ~/.mp*
+
+if [ ! -d "$MP_DATA" ]; then
+set -e
+
+echo "Generating mp configurations..."
+mkdir -p $MP_DATA
+echo -e "\n" | mpd testnet -o $MP_DATA --v 1 --chain-id $CHAIN_ID --node-dir-prefix n --keyring-backend test
+ #&> /dev/null
+echo "$(pwd)"
+
+if [ "$(uname)" = "Linux" ]; then
+  # TODO: Just index *some* specified tags, not all
+  sed -i "s#index_all_keys = false#index_all_keys = true#g" $cfgpth
+
+  # Set proper defaults and change ports
+  sed -i 's#"leveldb"#"goleveldb"#g' $cfgpth
+  sed -i "s#:26656#:$P2P_PORT#g" $cfgpth
+  sed -i "s#:26657#:$RPC_PORT#g" $cfgpth
+  #sed -i 's#"localhost:6060"#"localhost:6061"#g' $cfgpth
+  sed -i "s#:26658#:$PROXY_PORT#g" $cfgpth
+
+  # Make blocks run faster than normal
+  sed -i 's/timeout_commit = "5s"/timeout_commit = "1s"/g' $cfgpth
+  sed -i 's/timeout_propose = "3s"/timeout_propose = "1s"/g' $cfgpth
+else
+  # TODO: Just index *some* specified tags, not all
+  sed -i '' "s#index_all_keys = false#index_all_keys = true#g" $cfgpth
+
+  # Set proper defaults and change ports
+  sed -i '' 's#"leveldb"#"goleveldb"#g' $cfgpth
+  sed -i '' "s#:26656#:$P2P_PORT#g" $cfgpth
+  sed -i '' "s#:26657#:$RPC_PORT#g" $cfgpth
+  #sed -i '' 's#"localhost:6060"#"localhost:6061"#g' $cfgpth
+  sed -i '' "s#:26658#:$PROXY_PORT#g" $cfgpth
+
+  # Make blocks run faster than normal
+  sed -i '' 's/timeout_commit = "5s"/timeout_commit = "1s"/g' $cfgpth
+  sed -i '' 's/timeout_propose = "3s"/timeout_propose = "1s"/g' $cfgpth
 fi
 
-if [ ! -f ~/.mpd/config/config.toml ]; then
-  mkdir -p ~/.mpd/config
-  cp config.toml ~/.mpd/config
 
-  echo "Initialization..."
-  mpd init node0 --chain-id mpchain
-  mpcli config keyring-backend test
 
-  echo "Adding genesis accounts..."
-  mpcli keys add user1 -i < data_u1.txt
-  mpcli keys add user2 -i < data_u2.txt
-  mpcli keys add user3 -i < data_u3.txt
-  mpcli keys add sellerBeneficiary -i < data_sb.txt
-  mpcli keys add buyerBeneficiary -i < data_bb.txt
-  mpcli keys add relay -i < data_dg.txt
+mpcli --home $gclhome keys add user1 -i --keyring-backend test < data_u1.txt
+mpcli --home $gclhome keys add user2 -i --keyring-backend test < data_u2.txt
+mpcli --home $gclhome keys add user3 -i --keyring-backend test < data_u3.txt
+#mpcli --home $gclhome keys add sellerBeneficiary -i --keyring-backend test < "data_sb.txt"
+#mpcli --home $gclhome keys add buyerBeneficiary -i --keyring-backend test < "data_bb.txt"
 
-  mpd add-genesis-account $(mpcli keys show user1 -a) 999999token,100000000stake
-  mpd add-genesis-account $(mpcli keys show user2 -a) 999999token,100000000stake
-  mpd add-genesis-account $(mpcli keys show user3 -a) 999999token,100000000stake
-  mpd add-genesis-account $(mpcli keys show sellerBeneficiary -a) 100000000stake
-  mpd add-genesis-account $(mpcli keys show buyerBeneficiary -a) 100000000stake
-  mpd add-genesis-account $(mpcli keys show relay -a) 100000000stake
+mpd --home $gdhome add-genesis-account $(mpcli --home $gclhome keys show user1 -a --keyring-backend test) 999999token,100000000stake --keyring-backend test
+mpd --home $gdhome add-genesis-account $(mpcli --home $gclhome keys show user2 -a --keyring-backend test) 999999token,100000000stake --keyring-backend test
+mpd --home $gdhome add-genesis-account $(mpcli --home $gclhome keys show user3 -a --keyring-backend test) 999999token,100000000stake --keyring-backend test
 
-  if [[ $DEMO ]]; then
-    if [[ -e $file_input ]]; then
-      echo "read prepared mnemonics"
-      i=1
-      while read -r line; do
-        echo $line > tmp.txt
-        echo "" >> tmp.txt
-#        echo $PSW >> tmp.txt
-#        echo $PSW >> tmp.txt
-#        echo "" >> tmp.txt
+mpcli --home $gclhome config chain-id $CHAIN_ID &> /dev/null
+mpcli --home $gclhome config output json &> /dev/null
+mpcli --home $gclhome config node http://localhost:$RPC_PORT &> /dev/null
+#
+##  mpcli config indent true
+##  mpcli config trust-node true
+#
+#
+#  mpd --home $gdhome gentx --name user1 --keyring-backend test
+#  mpd --home $gdhome collect-gentxs
+#  mpd --home $gdhome validate-genesis
 
-        echo "gen user demo${i}"
-        mpcli keys add demo$i -i < tmp.txt
-        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count --keyring-backend test
-        i=$((i+1))
-      done < $file_input
-      rm tmp.txt
-    else
-      rm $file_output
-      echo "generate mnemonics"
-      for ((i=1;i<=$account_num;i++));
-      do
-        mnemonic=$(mpcli keys add demo$i |& tail -1)
-        mpd add-genesis-account $(mpcli keys show demo$i -a) $money_count --keyring-backend test
-        echo "demo$i      $pwd        $money_count       $mnemonic" >> $file_output
-      done
-    fi
-  fi
-
-  echo "Configuring..."
-  mpcli config chain-id mpchain
-  mpcli config output json
-  mpcli config indent true
-  mpcli config trust-node true
-
-  mpd gentx --name user1 --keyring-backend test
-  mpd collect-gentxs
-  mpd validate-genesis
 fi
 
 if [[ -z $NORUN ]]; then
-  echo "Starting node..."
-  #mpcli rest-server --chain-id mpchain --trust-node --laddr tcp://0.0.0.0:1317 > /dev/null &
-  mpd start #&> mplog.log
+  echo "Starting mpd instances..."
+  if [[ -z $REST ]]; then
+    mpd --home $gdhome start --pruning=nothing --log_level=debug #> $CHAIN_ID.log 2>&1 &
+  else
+    mpcli rest-server --chain-id $CHAIN_ID --trust-node --node tcp://$RPC_HOST:$RPC_PORT --laddr tcp://0.0.0.0:$LCD_PORT #> "${CHAIN_ID}-rest".log 2>&1 &
+  fi
 fi
+#tail -f $chainid1.log

@@ -9,8 +9,9 @@ services:
       - ./data:/data
       - mp-ibc1-data:/root
     ports:
-      - 26657:26657
+      - 26557:26657
     environment:
+      - CHAIN_ID=ibc1
       - RESET=true
       - VIRTUAL_PORT=26657
       - VIRTUAL_HOST=demo-ibc1-node.openmarket.one
@@ -23,9 +24,8 @@ services:
     entrypoint: /bin/sh
     command: -c "mpcli rest-server --chain-id mpchain --trust-node --laddr tcp://0.0.0.0:1317 --node=tcp://marketplace_ibc1:26657"
     ports:
-      - 1317:1317
+      - 1318:1317
     environment:
-      - CHAIN_ID=ibc1
       - VIRTUAL_PORT=1317
       - VIRTUAL_HOST=demo-ibc1-rest.openmarket.one
       - LETSENCRYPT_HOST=demo-ibc1-rest.openmarket.one
