@@ -11,8 +11,8 @@ mpcli tx marketplace createFT fungible 577 --from user1 -y <<< '12345678' >/dev/
 
 sleep $sleep_time
 
-amount=$(mpcli query marketplace fungible_tokens | grep -A1 '"denom": "fungible",' | grep -oP '(?<=\"emission_amount\": \")(.*)(?=\".*)' -m 1)
-user_amount=$(mpcli query account $(mpcli keys show user1 -a) | grep -A1 '"denom": "fungible",' | grep -oP '(?<=\"amount\": \")(.*)(?=\".*)' -m 1)
+amount=$(mpcli query marketplace fungible_tokens | ggrep -A1 '"denom": "fungible",' | ggrep -oP '(?<=\"emission_amount\": \")(.*)(?=\".*)' -m 1)
+user_amount=$(mpcli query account $(mpcli keys show user1 -a) | ggrep -A1 '"denom": "fungible",' | ggrep -oP '(?<=\"amount\": \")(.*)(?=\".*)' -m 1)
 
 if [[ $amount == 577 ]] && [[ $amount == $user_amount ]]
 then

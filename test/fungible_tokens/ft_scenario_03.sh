@@ -12,16 +12,16 @@ sleep $sleep_time
 
 echo "create FT"
 
-old_ft_count=$(mpcli query marketplace fungible_tokens | grep denom | wc -l)
+old_ft_count=$(mpcli query marketplace fungible_tokens | ggrep denom | wc -l)
 
 mpcli tx marketplace createFT fungible 100 --from user1 -y <<< '12345678' >/dev/null
 
 sleep $sleep_time
 echo "create dublicate FT"
 
-new_ft_count=$(mpcli query marketplace fungible_tokens | grep denom | wc -l)
+new_ft_count=$(mpcli query marketplace fungible_tokens | ggrep denom | wc -l)
 
-amount=$(mpcli query marketplace fungible_tokens | grep -A1 '"denom": "fungible",' | grep -oP '(?<=\"emission_amount\": \")(.*)(?=\".*)' -m 1)
+amount=$(mpcli query marketplace fungible_tokens | ggrep -A1 '"denom": "fungible",' | ggrep -oP '(?<=\"emission_amount\": \")(.*)(?=\".*)' -m 1)
 
 if [[ $amount != 577 ]] && [[ $old_ft_count != $new_ft_count ]]
 then

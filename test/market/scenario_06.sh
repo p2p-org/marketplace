@@ -16,7 +16,7 @@ mpcli tx nft mint name $nft_2_id $user2_id --from user2 -y <<< '12345678' >/dev/
 
 sleep $sleep_time
 
-nft_id=$(mpcli query marketplace nft $nft_2_id | grep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
+nft_id=$(mpcli query marketplace nft $nft_2_id | ggrep -oP '(?<=\"id\": \")(.*)(?=\".*)' -m 1)
 
 if [[ -z "$nft_id" ]]
 then
@@ -32,9 +32,9 @@ mpcli tx marketplace put_on_market $nft_2_id 150token $seller_id --from user1 -y
 
 sleep $sleep_time
 
-nft_sel_ben_id=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"seller_beneficiary\": \")(.*)(?=\".*)' -m 1)
-status=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"status\": \")(.*)(?=\".*)' -m 1 | tr -d ,)
-price=$(mpcli query marketplace nft $nft_id | grep -oP '(?<=\"price\": ).*' -m 1)
+nft_sel_ben_id=$(mpcli query marketplace nft $nft_id | ggrep -oP '(?<=\"seller_beneficiary\": \")(.*)(?=\".*)' -m 1)
+status=$(mpcli query marketplace nft $nft_id | ggrep -oP '(?<=\"status\": \")(.*)(?=\".*)' -m 1 | tr -d ,)
+price=$(mpcli query marketplace nft $nft_id | ggrep -oP '(?<=\"price\": ).*' -m 1)
 
 if [[ $seller_id == $nft_sel_ben_id ]] || [[ $status == "on_market" ]] || [[ $price != "[]," ]]
 then
