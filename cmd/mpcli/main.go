@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
+	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
 	"os"
 	"path"
 
@@ -76,6 +77,7 @@ func main() {
 
 func registerRoutes(rs *lcd.RestServer) {
 	client.RegisterRoutes(rs.CliCtx, rs.Mux)
+	authrest.RegisterTxRoutes(rs.CliCtx, rs.Mux)
 	app.ModuleBasics.RegisterRESTRoutes(rs.CliCtx, rs.Mux)
 }
 
