@@ -9,13 +9,15 @@ services:
       - ./data:/data
     ports:
       - 26657:26657
+    networks:
+      - dwh-tier
     environment:
       - CHAIN_ID=ibc0
       - DATA_DIR=/data
       - INIT=true
       - VIRTUAL_PORT=26657
-      - VIRTUAL_HOST=demo-ibc0-node.openmarket.one
-      - LETSENCRYPT_HOST=demo-ibc0-node.openmarket.one
+      - VIRTUAL_HOST=demo-ibc0-rpc.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc0-rpc.openmarket.one
 
   marketplace_api_ibc0:
     container_name: marketplace_api_ibc0
@@ -23,6 +25,8 @@ services:
     restart: unless-stopped
     ports:
       - 1317:1317
+    networks:
+      - dwh-tier
     environment:
       - CHAIN_ID=ibc0
       - DATA_DIR=/data
@@ -40,13 +44,15 @@ services:
       - ./data:/data
     ports:
       - 26557:26657
+    networks:
+      - dwh-tier
     environment:
       - CHAIN_ID=ibc1
       - DATA_DIR=/data
       - INIT=true
       - VIRTUAL_PORT=26657
-      - VIRTUAL_HOST=demo-ibc1-node.openmarket.one
-      - LETSENCRYPT_HOST=demo-ibc1-node.openmarket.one
+      - VIRTUAL_HOST=demo-ibc1-rpc.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc1-rpc.openmarket.one
 
   marketplace_api_ibc1:
     container_name: marketplace_api_ibc1
@@ -54,6 +60,8 @@ services:
     restart: unless-stopped
     ports:
       - 1318:1317
+    networks:
+      - dwh-tier
     environment:
       - CHAIN_ID=ibc1
       - DATA_DIR=/data
@@ -62,3 +70,7 @@ services:
       - VIRTUAL_PORT=1317
       - VIRTUAL_HOST=demo-ibc1-rest.openmarket.one
       - LETSENCRYPT_HOST=demo-ibc1-rest.openmarket.one
+
+networks:
+  dwh-tier:
+    driver: bridge
