@@ -2,7 +2,7 @@ package nftIBC
 
 import (
 	"fmt"
-	"github.com/corestario/marketplace/x/nftIBC/types"
+	"github.com/p2p-org/marketplace/x/nftIBC/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 

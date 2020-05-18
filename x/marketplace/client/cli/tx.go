@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"

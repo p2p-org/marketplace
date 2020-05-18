@@ -1,4 +1,4 @@
-module github.com/corestario/marketplace
+module github.com/p2p-org/marketplace
 
 go 1.12
 
@@ -22,5 +22,4 @@ require (
 )
 
 replace github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.34.4-0.20200507135526-b3cada10017d
-
 replace github.com/cosmos/modules/incubator/nft => ./../modules/incubator/nft

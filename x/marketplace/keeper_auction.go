@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 

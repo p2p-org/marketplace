@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/corestario/marketplace/common"
-	"github.com/corestario/marketplace/x/marketplace/config"
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/common"
+	"github.com/p2p-org/marketplace/x/marketplace/config"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"

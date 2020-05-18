@@ -1,7 +1,7 @@
 package marketplace
 
 import (
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 )
 
 const (

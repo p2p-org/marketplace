@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	mpcfg "github.com/corestario/marketplace/x/marketplace/config"
-	mptypes "github.com/corestario/marketplace/x/marketplace/types"
+	mpcfg "github.com/p2p-org/marketplace/x/marketplace/config"
+	mptypes "github.com/p2p-org/marketplace/x/marketplace/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/types/module"

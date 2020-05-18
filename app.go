@@ -19,10 +19,10 @@ import (
 
 	tlog "github.com/tendermint/tendermint/libs/log"
 
-	"github.com/corestario/marketplace/common"
-	"github.com/corestario/marketplace/x/marketplace"
-	"github.com/corestario/marketplace/x/marketplace/config"
-	transferNFT "github.com/corestario/marketplace/x/nftIBC"
+	"github.com/p2p-org/marketplace/common"
+	"github.com/p2p-org/marketplace/x/marketplace"
+	"github.com/p2p-org/marketplace/x/marketplace/config"
+	transferNFT "github.com/p2p-org/marketplace/x/nftIBC"
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"

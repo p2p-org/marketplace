@@ -3,8 +3,8 @@ package marketplace
 import (
 	"fmt"
 
-	"github.com/corestario/marketplace/common"
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/common"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/modules/incubator/nft"
 )

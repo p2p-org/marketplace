@@ -1,11 +1,11 @@
 package keeper
 
 import (
-	"github.com/corestario/marketplace/x/marketplace"
+	"github.com/p2p-org/marketplace/x/marketplace"
 	"github.com/cosmos/modules/incubator/nft"
 	"strings"
 
-	"github.com/corestario/marketplace/x/nftIBC/types"
+	"github.com/p2p-org/marketplace/x/nftIBC/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	channeltypes "github.com/cosmos/cosmos-sdk/x/ibc/04-channel/types"

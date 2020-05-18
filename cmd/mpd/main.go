@@ -14,7 +14,7 @@ import (
 	l "log"
 	"net/http"
 
-	app "github.com/corestario/marketplace"
+	app "github.com/p2p-org/marketplace"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/store"

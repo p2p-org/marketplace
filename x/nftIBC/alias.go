@@ -1,8 +1,8 @@
 package nftIBC
 
 import (
-	"github.com/corestario/marketplace/x/nftIBC/keeper"
-	"github.com/corestario/marketplace/x/nftIBC/types"
+	"github.com/p2p-org/marketplace/x/nftIBC/keeper"
+	"github.com/p2p-org/marketplace/x/nftIBC/types"
 	ibcTypes "github.com/cosmos/cosmos-sdk/x/ibc/20-transfer/types"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	app "github.com/corestario/marketplace"
+	app "github.com/p2p-org/marketplace"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/client/lcd"
