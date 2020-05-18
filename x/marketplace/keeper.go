@@ -235,7 +235,7 @@ func (k *Keeper) CreateFungibleToken(ctx sdk.Context, creator sdk.AccAddress, de
 		return fmt.Errorf("failed to mint fungible tokens: %v", sdkErr.Error())
 	}
 
-	sdkErr = k.coinKeeper.SendCoinsFromModuleToAccount(ctx, bank.ModuleName, creator, mintedCoins)
+	sdkErr = k.coinKeeper.SendCoinsFromModuleToAccount(ctx, mint.ModuleName, creator, mintedCoins)
 	if sdkErr != nil {
 		RollbackCommissions(ctx, k, logger, initialBalances)
 		return fmt.Errorf("failed to add coins: %v", sdkErr.Error())

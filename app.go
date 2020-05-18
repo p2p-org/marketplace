@@ -90,6 +90,7 @@ var (
 		gov.ModuleName:                     {auth.Burner},
 		transfer.GetModuleAccountName():    {auth.Minter, auth.Burner},
 		transferNFT.GetModuleAccountName(): {auth.Minter, auth.Burner},
+		bank.ModuleName:                    {auth.Minter, auth.Burner},
 	}
 
 	// module accounts that are allowed to receive tokens
@@ -264,9 +265,9 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 		app.stakingKeeper,
 		app.distrKeeper,
 		app.keys[marketplace.StoreKey],
+		app.keys[marketplace.DeletedNFTKey],
 		app.keys[marketplace.RegisterCurrencyKey],
 		app.keys[marketplace.AuctionKey],
-		app.keys[marketplace.DeletedNFTKey],
 		app.cdc,
 		srvCfg,
 		common.NewPrometheusMsgMetrics("marketplace"),
@@ -362,6 +363,7 @@ func NewMarketplaceApp(logger tlog.Logger, db dbm.DB, traceStore io.Writer, load
 			ante.DefaultSigVerificationGasConsumer,
 		),
 	)
+	app.SetEndBlocker(app.EndBlocker)
 
 	app.MountKVStores(keys)
 	app.MountTransientStores(tkeys)

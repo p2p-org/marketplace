@@ -76,6 +76,7 @@ func unifiedHandler(cliCtx context.CLIContext) http.HandlerFunc {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		fmt.Println("TTX", ttx)
 		txBytes, err := cliCtx.Codec.MarshalBinaryLengthPrefixed(ttx)
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
