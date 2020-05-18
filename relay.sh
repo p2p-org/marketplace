@@ -63,9 +63,8 @@ fi
 
 if [[ -z $NORUN ]]; then
   echo "Starting relayer..."
-#  while :
-#  do
-#    # loop infinitely
-#  done
+
+  rly start demo &
+  rly start demoNFT
 fi
 

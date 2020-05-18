@@ -3,7 +3,7 @@
     "chain-id": "ibc0",
     "client-id": "ibconeclient",
     "connection-id": "ibconeconnection",
-    "channel-id": "ibconexfer",
+    "channel-id": "ibconechannel",
     "port-id": "transfer",
     "order": "ordered"
   },
@@ -11,7 +11,7 @@
     "chain-id": "ibc1",
     "client-id": "ibczeroclient",
     "connection-id": "ibczeroconnection",
-    "channel-id": "ibczeroxfer",
+    "channel-id": "ibczerochannel",
     "port-id": "transfer",
     "order": "ordered"
   },
