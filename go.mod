@@ -1,4 +1,4 @@
-module github.com/corestario/marketplace
+module github.com/p2p-org/marketplace
 
 go 1.12
 
