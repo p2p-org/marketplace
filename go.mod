@@ -22,4 +22,5 @@ require (
 )
 
 replace github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.34.4-0.20200507135526-b3cada10017d
-replace github.com/cosmos/modules/incubator/nft => ./../modules/incubator/nft
+
+replace github.com/cosmos/modules/incubator/nft => github.com/corestario/modules/incubator/nft v0.0.0-20200511154810-3d3a47a221a6
