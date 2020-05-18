@@ -3,7 +3,7 @@ FROM golang:1.14-alpine
 RUN apk add --update --no-cache bash ca-certificates git libc-dev make build-base
 #ENV PATH /go/bin:$PATH
 #ENV GOPATH /go
-ENV MARKETPLACEPATH /go/src/github.com/corestario/marketplace
+ENV MARKETPLACEPATH /go/src/github.com/p2p-org/marketplace
 #RUN mkdir -p $MARKETPLACEPATH
 WORKDIR $MARKETPLACEPATH
 
