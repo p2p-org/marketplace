@@ -73,4 +73,5 @@ services:
 
 networks:
   dwh-tier:
-    driver: bridge
+    external:
+      name: dwh-network
