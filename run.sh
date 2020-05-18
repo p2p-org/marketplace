@@ -41,10 +41,6 @@ while test $# -gt 0; do
       NORUN=true
       shift
       ;;
-    --norun)
-      NORUN=true
-      shift
-      ;;
     *)
       break
       ;;
