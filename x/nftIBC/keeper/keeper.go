@@ -2,13 +2,13 @@ package keeper
 
 import (
 	"fmt"
-	"github.com/corestario/marketplace/x/marketplace"
+	"github.com/p2p-org/marketplace/x/marketplace"
 	"github.com/cosmos/cosmos-sdk/x/ibc/20-transfer/types"
 	"github.com/cosmos/modules/incubator/nft"
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	nftIBC "github.com/corestario/marketplace/x/nftIBC/types"
+	nftIBC "github.com/p2p-org/marketplace/x/nftIBC/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"

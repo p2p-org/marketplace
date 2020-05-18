@@ -3,7 +3,7 @@ package keeper_test
 import (
 	"fmt"
 
-	"github.com/corestario/marketplace/x/nftIBC/types"
+	"github.com/p2p-org/marketplace/x/nftIBC/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	channeltypes "github.com/cosmos/cosmos-sdk/x/ibc/04-channel/types"

@@ -1,7 +1,7 @@
 syntax = "proto3";
 package marketplace.x.nftIBC.v1;
 
-option go_package = "github.com/corestario/marketplace/x/nftIBC/types";
+option go_package = "github.com/p2p-org/marketplace/x/nftIBC/types";
 
 import "third_party/proto/gogoproto/gogo.proto";
 

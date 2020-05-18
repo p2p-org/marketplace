@@ -9,9 +9,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/corestario/marketplace/x/nftIBC/client/cli"
-	"github.com/corestario/marketplace/x/nftIBC/client/rest"
-	"github.com/corestario/marketplace/x/nftIBC/types"
+	"github.com/p2p-org/marketplace/x/nftIBC/client/cli"
+	"github.com/p2p-org/marketplace/x/nftIBC/client/rest"
+	"github.com/p2p-org/marketplace/x/nftIBC/types"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"

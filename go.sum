@@ -87,6 +87,8 @@ github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7/go.mod h1:F5haX7
 github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/pkg v0.0.0-20160727233714-3ac0863d7acf/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
+github.com/corestario/modules/incubator/nft v0.0.0-20200511154810-3d3a47a221a6 h1:OU01S4FI7htz+f++AQcQgtDb4zTJLqp1xqWF1T2j6dY=
+github.com/corestario/modules/incubator/nft v0.0.0-20200511154810-3d3a47a221a6/go.mod h1:u2n4rcq241OnClIqu0TmNVdu+y4TR2Dy+/kVLFJ63Vw=
 github.com/cosmos/cosmos-sdk v0.34.4-0.20191013030331-92ea174ea6e6/go.mod h1:IGBhkbOK1ebLqMWjtgo99zUxWHsA5IOb6N9CI8nHs0Y=
 github.com/cosmos/cosmos-sdk v0.34.4-0.20191112184617-ae8ea8f39193 h1:/ybGp7gmG5gL4hdeXtx6XQKOf3HHaUOEGxo04xQYAzI=
 github.com/cosmos/cosmos-sdk v0.34.4-0.20191112184617-ae8ea8f39193/go.mod h1:0sLtjU+qex1OfpGQHjWhJByx74IoH78R742PEAdoQJk=

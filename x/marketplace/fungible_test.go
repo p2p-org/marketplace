@@ -3,8 +3,8 @@ package marketplace_test
 import (
 	"testing"
 
-	"github.com/corestario/marketplace/x/marketplace"
-	"github.com/corestario/marketplace/x/marketplace/types"
+	"github.com/p2p-org/marketplace/x/marketplace"
+	"github.com/p2p-org/marketplace/x/marketplace/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )

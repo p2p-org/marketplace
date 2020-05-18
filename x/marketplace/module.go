@@ -3,8 +3,8 @@ package marketplace
 import (
 	"encoding/json"
 
-	"github.com/corestario/marketplace/x/marketplace/client/cli"
-	"github.com/corestario/marketplace/x/marketplace/client/rest"
+	"github.com/p2p-org/marketplace/x/marketplace/client/cli"
+	"github.com/p2p-org/marketplace/x/marketplace/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
