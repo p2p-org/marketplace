@@ -1,10 +1,8 @@
 version: '3'
 
 services:
-
-
-  marketplace:
-    container_name: marketplace
+  marketplace_ibc0:
+    container_name: marketplace_ibc0
     image: "marketplace:latest"
     restart: unless-stopped
     volumes:
@@ -14,15 +12,15 @@ services:
     networks:
       - dwh-tier
     environment:
-      - CHAIN_ID=mpchain
+      - CHAIN_ID=ibc0
       - DATA_DIR=/data
-      #      - INIT=true
+      - INIT=true
       - VIRTUAL_PORT=26657
-      - VIRTUAL_HOST=demo-node.openmarket.one
-      - LETSENCRYPT_HOST=demo-node.openmarket.one
+      - VIRTUAL_HOST=demo-ibc0-rpc.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc0-rpc.openmarket.one
 
-  marketplace_api:
-    container_name: marketplace_api
+  marketplace_api_ibc0:
+    container_name: marketplace_api_ibc0
     image: "marketplace:latest"
     restart: unless-stopped
     ports:
@@ -32,12 +30,11 @@ services:
     environment:
       - CHAIN_ID=ibc0
       - DATA_DIR=/data
-      - RPC_HOST=marketplace
+      - RPC_HOST=marketplace_ibc0
       - REST=true
       - VIRTUAL_PORT=1317
-      - VIRTUAL_HOST=demo-rest.openmarket.one
-      - LETSENCRYPT_HOST=demo-rest.openmarket.one
-
+      - VIRTUAL_HOST=demo-ibc0-rest.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc0-rest.openmarket.one
 
 networks:
   dwh-tier:

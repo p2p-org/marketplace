@@ -18,3 +18,5 @@ go.sum
 
 *.txt
 *.log
+
+data/
