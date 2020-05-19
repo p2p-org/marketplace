@@ -6,7 +6,7 @@ services:
     image: "marketplace:latest"
     restart: unless-stopped
     volumes:
-      - ./data:/data
+      - ~/data:/data
     ports:
       - 26657:26657
     networks:
@@ -23,6 +23,8 @@ services:
     container_name: marketplace_api_ibc0
     image: "marketplace:latest"
     restart: unless-stopped
+    volumes:
+      - ~/data:/data
     ports:
       - 1317:1317
     networks:
@@ -40,7 +42,7 @@ services:
     image: "marketplace:latest"
     restart: unless-stopped
     volumes:
-      - ./data:/data
+      - ~/data:/data
     ports:
       - 26557:26657
     networks:
@@ -57,6 +59,8 @@ services:
     container_name: marketplace_api_ibc1
     image: "marketplace:latest"
     restart: unless-stopped
+    volumes:
+      - ~/data:/data
     ports:
       - 1318:1317
     networks:
