@@ -14,7 +14,7 @@ services:
     environment:
       - CHAIN_ID=ibc0
       - DATA_DIR=/data
-      - INIT=true
+#      - INIT=true
       - VIRTUAL_PORT=26657
       - VIRTUAL_HOST=demo-ibc0-rpc.openmarket.one
       - LETSENCRYPT_HOST=demo-ibc0-rpc.openmarket.one
