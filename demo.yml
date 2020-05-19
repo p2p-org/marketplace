@@ -23,6 +23,8 @@ services:
     container_name: marketplace_api_ibc0
     image: "marketplace:latest"
     restart: unless-stopped
+    depends_on:
+      - marketplace_ibc0
     volumes:
       - ~/data:/data
     ports:
@@ -37,6 +39,7 @@ services:
       - VIRTUAL_PORT=1317
       - VIRTUAL_HOST=demo-ibc0-rest.openmarket.one
       - LETSENCRYPT_HOST=demo-ibc0-rest.openmarket.one
+
   marketplace_ibc1:
     container_name: marketplace_ibc1
     image: "marketplace:latest"
@@ -59,6 +62,8 @@ services:
     container_name: marketplace_api_ibc1
     image: "marketplace:latest"
     restart: unless-stopped
+    depends_on:
+      - marketplace_ibc1
     volumes:
       - ~/data:/data
     ports:
