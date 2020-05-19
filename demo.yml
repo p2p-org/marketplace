@@ -1,6 +1,40 @@
 version: '3'
 
 services:
+  marketplace_ibc0:
+    container_name: marketplace_ibc0
+    image: "marketplace:latest"
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    ports:
+      - 26657:26657
+    networks:
+      - dwh-tier
+    environment:
+      - CHAIN_ID=ibc0
+      - DATA_DIR=/data
+#      - INIT=true
+      - VIRTUAL_PORT=26657
+      - VIRTUAL_HOST=demo-ibc0-rpc.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc0-rpc.openmarket.one
+
+  marketplace_api_ibc0:
+    container_name: marketplace_api_ibc0
+    image: "marketplace:latest"
+    restart: unless-stopped
+    ports:
+      - 1317:1317
+    networks:
+      - dwh-tier
+    environment:
+      - CHAIN_ID=ibc0
+      - DATA_DIR=/data
+      - RPC_HOST=marketplace_ibc0
+      - REST=true
+      - VIRTUAL_PORT=1317
+      - VIRTUAL_HOST=demo-ibc0-rest.openmarket.one
+      - LETSENCRYPT_HOST=demo-ibc0-rest.openmarket.one
   marketplace_ibc1:
     container_name: marketplace_ibc1
     image: "marketplace:latest"
@@ -14,7 +48,7 @@ services:
     environment:
       - CHAIN_ID=ibc1
       - DATA_DIR=/data
-      #      - INIT=true
+#      - INIT=true
       - VIRTUAL_PORT=26657
       - VIRTUAL_HOST=demo-ibc1-rpc.openmarket.one
       - LETSENCRYPT_HOST=demo-ibc1-rpc.openmarket.one
